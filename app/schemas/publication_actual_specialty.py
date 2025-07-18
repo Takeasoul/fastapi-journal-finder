@@ -10,7 +10,7 @@ class PublicationActualSpecialtyBase(BaseModel):
     name: str
     issn: str
     specialty_name: Optional[str] = None
-    source: SourceEnum
+    source: Optional[SourceEnum]
     actual_flag: int
     inclusion_date: Optional[str] = None  # Можно потом переделать на date, если надо
     exclusion_date: Optional[str] = None
