@@ -2,7 +2,7 @@
 import logging
 
 from cryptography.fernet import Fernet
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from starlette.responses import PlainTextResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -58,3 +58,9 @@ async def read_root(request: Request):
     client_ip = request.headers.get("x-forwarded-for", request.client.host)
     print(f"IP-адрес клиента: {client_ip}")
     return {"message": "Hello, World!", "client_ip": client_ip}
+
+@app.middleware("http")
+async def block_connect_method(request: Request, call_next):
+    if request.method == "CONNECT":
+        raise HTTPException(status_code=405, detail="Method Not Allowed")
+    return await call_next(request)

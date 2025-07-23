@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
     ENCRYPTION_KEY: str
+    EMAIL_SENDER: str
+    EMAIL_PASSWORD: str
 
     @validator("REFRESH_TOKEN_EXPIRE_DAYS", pre=True)
     def parse_refresh_token_expire_days(cls, v):

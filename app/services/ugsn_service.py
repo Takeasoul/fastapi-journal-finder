@@ -12,7 +12,7 @@ async def get_ugsn_by_id(db: AsyncSession, id: int):
     result = await db.execute(select(UGSN).where(UGSN.id == id))
     item = result.scalar_one_or_none()
     if not item:
-        raise HTTPException(status_code=404, detail="UGSN not found")
+        raise HTTPException(status_code=404, detail="УГСН не найден")
     return item
 
 async def create_ugsn(db: AsyncSession, data: UGSNCreate):

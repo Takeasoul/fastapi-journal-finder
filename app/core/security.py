@@ -1,4 +1,5 @@
 import logging
+import secrets
 from typing import Annotated
 
 from fastapi.security import OAuth2PasswordBearer
@@ -112,3 +113,13 @@ def decode_token(token: str, token_type: str) -> dict:
         raise HTTPException(status_code=401, detail="Token has expired")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def generate_confirmation_token():
+    return secrets.token_urlsafe(32)
+
+def generate_reset_password_token():
+    return secrets.token_urlsafe(32)
+
+def get_reset_password_token_expiry():
+    return datetime.utcnow() + timedelta(minutes=10)

@@ -9,7 +9,7 @@ async def get_pub_info(db: AsyncSession, pub_id: int):
     result = await db.execute(select(PubInformation).where(PubInformation.pub_id == pub_id))
     pub_info = result.scalars().first()
     if not pub_info:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Publication info not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Информация о публикации не найдена")
     return pub_info
 
 async def create_pub_info(db: AsyncSession, pub_info_in: PubInformationCreate):

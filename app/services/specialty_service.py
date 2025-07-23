@@ -20,7 +20,7 @@ async def get_specialty_by_id(db: AsyncSession, specialty_id: int):
     )
     specialty = result.scalar_one_or_none()
     if not specialty:
-        raise HTTPException(status_code=404, detail="Specialty not found")
+        raise HTTPException(status_code=404, detail="Специальность не найдена")
     return specialty
 
 async def create_specialty(db: AsyncSession, data: SpecialtyCreate):

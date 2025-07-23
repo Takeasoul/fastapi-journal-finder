@@ -10,7 +10,13 @@ from app.core.database import get_db1_session
 router = APIRouter(dependencies=[Depends(require_role("admin"))])
 
 
-@router.get("/")
+@router.get(
+    "/",
+    description="Получает список всех пользователей с поддержкой пагинации. "
+                "- **page**: Номер страницы (начинается с 1). "
+                "- **page_size**: Количество записей на странице (максимум 100). "
+                "Доступно только администраторам."
+)
 async def get_users(
     db: AsyncSession = Depends(get_db1_session),
     page: int = Query(1, ge=1, description="Номер страницы"),
@@ -29,7 +35,11 @@ async def get_users(
     }
 
 
-@router.get("/{user_id}")
+@router.get(
+    "/{user_id}",
+    description="Получает пользователя по его ID. Если пользователь не найден, возвращается ошибка 404. "
+                "Доступно только администраторам."
+)
 async def get_user(
     user_id: int = Path(...),
     db: AsyncSession = Depends(get_db1_session)
@@ -38,7 +48,10 @@ async def get_user(
     return await service.get_user(user_id)
 
 
-@router.post("/")
+@router.post(
+    "/",
+    description="Создает нового пользователя. Доступно только администраторам."
+)
 async def create_user(
     user_data: UserCreate = Body(...),
     db: AsyncSession = Depends(get_db1_session)
@@ -47,7 +60,11 @@ async def create_user(
     return await service.create_user(user_data)
 
 
-@router.put("/{user_id}")
+@router.put(
+    "/{user_id}",
+    description="Обновляет информацию о пользователе по его ID. Если пользователь не найден, возвращается ошибка 404. "
+                "Доступно только администраторам."
+)
 async def update_user(
     user_data: UserUpdate = Body(...),
     user_id: int = Path(...),
@@ -57,10 +74,28 @@ async def update_user(
     return await service.update_user(user_id, user_data)
 
 
-@router.delete("/{user_id}")
+@router.delete(
+    "/{user_id}",
+    description="Удаляет пользователя по его ID. Если пользователь не найден, возвращается ошибка 404. "
+                "Доступно только администраторам."
+)
 async def delete_user(
     user_id: int = Path(...),
     db: AsyncSession = Depends(get_db1_session)
 ):
     service = UserService(db)
     return await service.delete_user(user_id)
+
+
+@router.post(
+    "/activate",
+    summary="Активация аккаунта по ID или email",
+    description="Этот эндпоинт активирует аккаунт пользователя по его ID или email."
+)
+async def activate_account(
+    user_id: int = None,
+    email: str = None,
+    db: AsyncSession = Depends(get_db1_session)
+):
+    service = UserService(db)
+    return await service.activate_user(user_id=user_id, email=email)

@@ -15,7 +15,7 @@ async def get_edu_level_by_id(db: AsyncSession, edu_level_id: int):
     result = await db.execute(select(EduLevel).where(EduLevel.id == edu_level_id))
     edu_level = result.scalar_one_or_none()
     if not edu_level:
-        raise HTTPException(status_code=404, detail="EduLevel not found")
+        raise HTTPException(status_code=404, detail="Уровень образования не найден")
     return edu_level
 
 

@@ -12,7 +12,7 @@ async def get_city_by_id(db: AsyncSession, city_id: int):
     result = await db.execute(select(City).where(City.id == city_id))
     city = result.scalar_one_or_none()
     if not city:
-        raise HTTPException(status_code=404, detail="City not found")
+        raise HTTPException(status_code=404, detail="Город не найден")
     return city
 
 async def create_city(db: AsyncSession, data: CityCreate):

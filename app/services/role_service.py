@@ -11,11 +11,11 @@ class RoleService:
     async def create_role(self, name: str) -> dict:
         result = await self.db.execute(select(Role).where(Role.name == name))
         if result.scalars().first():
-            raise HTTPException(status_code=400, detail="Role already exists")
+            raise HTTPException(status_code=400, detail="Роль уже существует")
         role = Role(name=name)
         self.db.add(role)
         await self.db.commit()
-        return {"message": "Role created successfully"}
+        return {"message": "Роль успешно создана"}
 
     async def get_roles(self) -> list:
         result = await self.db.execute(select(Role))
@@ -25,19 +25,19 @@ class RoleService:
         result = await self.db.execute(select(Role).where(Role.id == role_id))
         role = result.scalars().first()
         if not role:
-            raise HTTPException(status_code=404, detail="Role not found")
+            raise HTTPException(status_code=404, detail="Роль не найдена")
         role.name = name
         await self.db.commit()
-        return {"message": "Role updated successfully"}
+        return {"message": "Роль обновлена успешно"}
 
     async def delete_role(self, role_id: int) -> dict:
         result = await self.db.execute(select(Role).where(Role.id == role_id))
         role = result.scalars().first()
         if not role:
-            raise HTTPException(status_code=404, detail="Role not found")
+            raise HTTPException(status_code=404, detail="Роль не найдена")
         await self.db.delete(role)
         await self.db.commit()
-        return {"message": "Role deleted successfully"}
+        return {"message": "Роль удалена успешно"}
 
 
     async def has_role(user_role: Role, required_role_name: str) -> bool:
