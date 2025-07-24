@@ -9,6 +9,7 @@ from app.core.logger import logger
 from app.models.role import Role
 from jose import JWTError, ExpiredSignatureError
 
+from app.services.utils.email_templates import EmailTemplates
 from app.services.utils.ip_utils import is_ip_whitelisted
 from app.services.email_service import EmailService
 
@@ -39,12 +40,16 @@ class AuthService:
         # Формирование ссылки для подтверждения
         confirmation_link = f"{request.base_url}auth/confirm?token={confirmation_token}"
 
+        # Получение HTML-шаблона письма
+        html_body = EmailTemplates.confirmation_email_template(confirmation_link)
+
         try:
             # Попытка отправить письмо с подтверждением
             await self.email_service.send_email(
                 recipient_email=data.username,
                 subject="Подтверждение аккаунта",
-                body=f"Пожалуйста подтвердите свой аккаунт перейдя по ссылке: {confirmation_link}"
+                body=f"Пожалуйста подтвердите свой аккаунт перейдя по ссылке: {confirmation_link}",
+                html_body=html_body
             )
         except Exception as e:
             # Если отправка письма не удалась, выбрасываем исключение
@@ -182,12 +187,16 @@ class AuthService:
         confirmation_token = generate_confirmation_token()
         confirmation_link = f"{request.base_url}auth/confirm?token={confirmation_token}"
 
+        # Получение HTML-шаблона письма
+        html_body = EmailTemplates.confirmation_email_template(confirmation_link)
+
         try:
             # Отправка письма с подтверждением
             await self.email_service.send_email(
                 recipient_email=email,
                 subject="Подтверждение аккаунта",
-                body=f"Пожалуйста подтвердите свой аккаунт перейдя по ссылке: {confirmation_link}"
+                body=f"Пожалуйста подтвердите свой аккаунт перейдя по ссылке: {confirmation_link}",
+                html_body = html_body
             )
         except Exception as e:
             logger.error(f"Ошибка отправки сообщения на почту: {e}")
