@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: str
     EMAIL_SENDER: str
     EMAIL_PASSWORD: str
+    CONFIRMATION_TOKEN_EXPIRE_MINUTES: int
+    RESET_PASSWORD_TOKEN_EXPIRE_MINUTES: int
 
     @validator("REFRESH_TOKEN_EXPIRE_DAYS", pre=True)
     def parse_refresh_token_expire_days(cls, v):

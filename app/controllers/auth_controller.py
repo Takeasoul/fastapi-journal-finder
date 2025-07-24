@@ -5,10 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db1_session
 from app.core.logger import logger
-from app.core.security import require_role, generate_reset_password_token, get_reset_password_token_expiry, \
-    get_password_hash
+from app.core.security import require_role, generate_reset_password_token, get_password_hash, \
+    get_reset_password_token_expiry
 from app.models import User
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, ChangeUserRoleRequest, RefreshTokenRequest
 from app.services.auth_service import AuthService
@@ -232,3 +233,4 @@ async def resend_confirmation(
     except HTTPException as e:
         logger.error(f"Resend confirmation failed: {e.detail}")
         raise e
+

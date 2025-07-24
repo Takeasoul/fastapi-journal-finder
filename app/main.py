@@ -11,7 +11,7 @@ from app.controllers import auth_controller, role_controller, user_controller, p
     specialty_controller, ugsn_controller, edu_level_controller, actual_specialty_controller, \
     journal_controller, city_controller, section_controller, grnti_controller, oecd_controller, actual_grnti_controller, \
     actual_oecd_controller, main_section_controller, contact_controller, pub_information_controller, index_controller, \
-    review_controller
+    review_controller, ip_whitelist_controller
 from app.core.security import get_password_hash, verify_password
 
 logging.basicConfig(level=logging.INFO)
@@ -52,6 +52,7 @@ app.include_router(contact_controller.router, prefix="/contacts", tags=["Contact
 app.include_router(pub_information_controller.router, prefix="/pub-information", tags=["PubInformation"])
 app.include_router(index_controller.router, prefix="/index", tags=["Index"])
 app.include_router(review_controller.router, prefix="/reviews", tags=["Review"])
+app.include_router(ip_whitelist_controller.router, prefix="/whitelist", tags=["whitelist"])
 @app.get("/checkip")
 async def read_root(request: Request):
     # Получаем IP-адрес из заголовка X-Forwarded-For или request.client.host

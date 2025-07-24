@@ -1,6 +1,7 @@
 import logging
 import secrets
 from typing import Annotated
+from urllib.parse import urljoin, urlencode
 
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
@@ -103,6 +104,26 @@ def create_refresh_token(data: dict) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
+
+def generate_confirmation_token() -> str:
+    payload = {
+        "exp": datetime.utcnow() + timedelta(minutes=settings.CONFIRMATION_TOKEN_EXPIRE_MINUTES),
+        "iat": datetime.utcnow(),
+        "type": "confirmation"
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+def get_reset_password_token_expiry() -> datetime:
+    return datetime.utcnow() + timedelta(minutes=settings.RESET_PASSWORD_TOKEN_EXPIRE_MINUTES)
+
+def generate_reset_password_token() -> str:
+    payload = {
+        "exp": datetime.utcnow() + timedelta(minutes=settings.RESET_PASSWORD_TOKEN_EXPIRE_MINUTES),
+        "iat": datetime.utcnow(),
+        "type": "reset_password"
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
 def decode_token(token: str, token_type: str) -> dict:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
@@ -110,16 +131,15 @@ def decode_token(token: str, token_type: str) -> dict:
             raise HTTPException(status_code=401, detail="Invalid token type")
         return payload
     except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
+        raise HTTPException(status_code=401, detail=f"{token_type.capitalize()} token has expired")
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+def generate_confirmation_link(token: str, base_url: str) -> str:
+    query_params = {"token": token}
+    return urljoin(base_url, f"/confirm?{urlencode(query_params)}")
 
-def generate_confirmation_token():
-    return secrets.token_urlsafe(32)
 
-def generate_reset_password_token():
-    return secrets.token_urlsafe(32)
-
-def get_reset_password_token_expiry():
-    return datetime.utcnow() + timedelta(minutes=10)
+def generate_reset_password_link(token: str, base_url: str) -> str:
+    query_params = {"token": token}
+    return urljoin(base_url, f"/reset-password?{urlencode(query_params)}")
