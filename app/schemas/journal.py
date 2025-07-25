@@ -2,6 +2,9 @@ from datetime import date
 from typing import Optional, List
 from pydantic import BaseModel, HttpUrl, condecimal
 
+from app.schemas.publication import PublicationBase, PublicationResponse
+
+
 class JournalBase(BaseModel):
     pub_id: int
     last_send_date: Optional[date] = None
@@ -47,6 +50,14 @@ class PaginatedJournalResponse(BaseModel):
 
 class JournalOut(JournalBase):
     id: int
+    publication: Optional[PublicationResponse] = None
 
     class Config:
         from_attributes = True
+
+class JournalResponse(JournalBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+

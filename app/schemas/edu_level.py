@@ -13,8 +13,9 @@ class EduLevelUpdate(EduLevelBase):
     pass
 
 
-class EduLevelOut(EduLevelBase):
+class EduLevelOut(BaseModel):
     id: int
+    name: str
 
     class Config:
         from_attributes = True

@@ -24,8 +24,8 @@ async def create_ugsn(db: AsyncSession, data: UGSNCreate):
 
 async def update_ugsn(db: AsyncSession, id: int, data: UGSNUpdate):
     item = await get_ugsn_by_id(db, id)
-    for key, value in data.dict().items():
-        setattr(item, key, value)
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(item, field, value)
     await db.commit()
     await db.refresh(item)
     return item

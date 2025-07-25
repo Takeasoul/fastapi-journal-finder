@@ -24,13 +24,19 @@ async def create_city(db: AsyncSession, data: CityCreate):
 
 async def update_city(db: AsyncSession, city_id: int, data: CityUpdate):
     city = await get_city_by_id(db, city_id)
-    for key, value in data.dict().items():
-        setattr(city, key, value)
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(city, field, value)
     await db.commit()
     await db.refresh(city)
     return city
 
 async def delete_city(db: AsyncSession, city_id: int):
-    city = await get_city_by_id(db, city_id)
+    result = await db.execute(select(City).where(City.id == city_id))
+    city = result.scalars().first()
+    if not city:
+        return False
+
+    # Удаляем запись
     await db.delete(city)
     await db.commit()
+    return True

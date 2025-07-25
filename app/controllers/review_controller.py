@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Path, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
-from app.core.security import require_role
+from app.core.security import require_role, logger
 from app.schemas.review import ReviewOut, ReviewCreate, ReviewUpdate
 from app.services import review_service
 
@@ -23,11 +23,17 @@ async def list_reviews(db: AsyncSession = Depends(get_db1_session)):
     description="Получает запись о рецензировании по ID публикации. Если запись о рецензировании не найден, возвращается ошибка 404. "
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
-async def get_review(pub_id: int = Path(...), db: AsyncSession = Depends(get_db1_session)):
-    review = await review_service.get_review_by_pub_id(db, pub_id)
-    if not review:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Запись о рецензировании не найдена")
-    return review
+async def get_review(pub_id: int, db: AsyncSession = Depends(get_db1_session)):
+    try:
+        review = await review_service.get_review_by_pub_id(db, pub_id)
+        if not review:
+            raise HTTPException(status_code=404, detail="Review not found")
+        return review
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in get_review: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post(
     "/",

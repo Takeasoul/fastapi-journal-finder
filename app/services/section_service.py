@@ -21,8 +21,8 @@ async def create_section(db: AsyncSession, data: SectionCreate):
 async def update_section(db: AsyncSession, section_id: int, data: SectionUpdate):
     section = await get_section_by_id(db, section_id)
     if section:
-        for key, value in data.dict().items():
-            setattr(section, key, value)
+        for field, value in data.dict(exclude_unset=True).items():
+            setattr(section, field, value)
         await db.commit()
         await db.refresh(section)
     return section

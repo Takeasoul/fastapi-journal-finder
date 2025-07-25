@@ -1,13 +1,21 @@
+import logging
 from typing import Dict, Tuple, List
 
-from sqlalchemy import func
+from fastapi import HTTPException
+from pydantic import ValidationError
+from sqlalchemy import func, text, Enum
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload, selectinload
 
+from app.core.security import logger
 from app.models import PublicationActualSpecialty
 from app.models.publication import Publication
 from app.models.publication_base_info import PublicationBaseInfo
-from app.schemas.publication import PublicationCreate, PublicationUpdate
+from app.schemas.actual_grnti import ActualGRNTIBase, ActualGRNTIResponse
+from app.schemas.actual_oecd import ActualOECDBase, ActualOECDResponse
+from app.schemas.main_section import MainSectionBase, MainSectionResponse
+from app.schemas.publication import PublicationCreate, PublicationUpdate, PublicationOut, PublicationResponse
 from app.models.publication import (
     Publication,
     SerialTypeEnum11,
@@ -18,6 +26,8 @@ from app.models.publication import (
     MainFinanceEnum,
     MultidiscEnum,
 )
+from app.schemas.publication_base_info import VakCategoryEnum
+
 
 async def get_paginated_publications(
     db: AsyncSession,
@@ -35,7 +45,13 @@ async def get_paginated_publications(
         "multidisc": MultidiscEnum,
     }
 
-    query = select(Publication)
+    query = select(Publication).options(
+        selectinload(Publication.actual_oecd_items),
+        selectinload(Publication.actual_grnti_items),
+        selectinload(Publication.main_sections)
+    )
+
+    # Initialize the count query without eager loading
     count_query = select(func.count()).select_from(Publication)
 
     # Фильтрация по языкам (Enum)
@@ -73,42 +89,109 @@ async def get_paginated_publications(
     query = query.offset(offset).limit(per_page)
 
     result = await db.execute(query)
-    publications = result.scalars().all()
+    publications = result.unique().scalars().all()
 
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
 
-    return publications, total
+    publications_out = []
+    for pub in publications:
+        pub_dict = {
+            **pub.__dict__,
+            "actual_oecd_items": [ActualOECDResponse.model_validate(item.__dict__) for item in pub.actual_oecd_items],
+            "actual_grnti_items": [ActualGRNTIResponse.model_validate(item.__dict__) for item in
+                                   pub.actual_grnti_items],
+            "main_sections": [MainSectionResponse.model_validate(item.__dict__) for item in pub.main_sections],
+        }
+        publications_out.append(PublicationResponse.model_validate(pub_dict))
 
-async def get_all_publications(db: AsyncSession):
-    result = await db.execute(select(Publication))
-    return result.scalars().all()
+    return publications_out, total
 
 async def get_publication_by_id(db: AsyncSession, pub_id: int):
-    result = await db.execute(select(Publication).where(Publication.id == pub_id))
-    return result.scalar_one_or_none()
+    result = await db.execute(
+        select(Publication)
+        .options(
+            selectinload(Publication.actual_oecd_items),
+            selectinload(Publication.actual_grnti_items),
+            selectinload(Publication.main_sections)
+        )
+        .where(Publication.id == pub_id)
+    )
+    pub = result.scalar_one_or_none()
+    if not pub:
+        raise HTTPException(status_code=404, detail="Публикация не найдена")
+
+    # Преобразуем в Pydantic модель
+    pub_dict = {
+        **pub.__dict__,
+        "actual_oecd_items": [ActualOECDResponse.model_validate(item.__dict__) for item in pub.actual_oecd_items],
+        "actual_grnti_items": [ActualGRNTIResponse.model_validate(item.__dict__) for item in pub.actual_grnti_items],
+        "main_sections": [MainSectionResponse.model_validate(item.__dict__) for item in pub.main_sections],
+    }
+    return PublicationOut.model_validate(pub_dict)
 
 async def create_publication(db: AsyncSession, data: PublicationCreate):
     pub = Publication(**data.dict())
     db.add(pub)
     await db.commit()
     await db.refresh(pub)
-    return pub
+
+    # Преобразуем в Pydantic-модель
+    return PublicationResponse.model_validate(pub.__dict__)
+
+
+async def get_publication_by_id_raw(db: AsyncSession, pub_id: int):
+    result = await db.execute(
+        select(Publication)
+        .options(
+            selectinload(Publication.actual_oecd_items),
+            selectinload(Publication.actual_grnti_items),
+            selectinload(Publication.main_sections)
+        )
+        .where(Publication.id == pub_id)
+    )
+    return result.scalar_one_or_none()
+
 
 async def update_publication(db: AsyncSession, pub_id: int, data: PublicationUpdate):
-    pub = await get_publication_by_id(db, pub_id)
-    if pub:
-        for key, value in data.dict(exclude_unset=True).items():
-            setattr(pub, key, value)
-        await db.commit()
-        await db.refresh(pub)
-    return pub
+    # Получаем объект SQLAlchemy
+    pub = await get_publication_by_id_raw(db, pub_id)
+    if not pub:
+        raise HTTPException(status_code=404, detail="Публикация не найдена")
+
+    # Обновляем поля объекта SQLAlchemy
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(pub, key, value)
+
+    # Сохраняем изменения в базе данных
+    await db.commit()
+
+    # Обновляем состояние объекта SQLAlchemy
+    await db.refresh(pub)
+
+    # Преобразуем объект SQLAlchemy в Pydantic-модель
+    try:
+        return PublicationResponse.model_validate({
+            **pub.__dict__,
+            "actual_oecd_items": [ActualOECDResponse.model_validate(item.__dict__) for item in pub.actual_oecd_items],
+            "actual_grnti_items": [ActualGRNTIResponse.model_validate(item.__dict__) for item in pub.actual_grnti_items],
+            "main_sections": [MainSectionResponse.model_validate(item.__dict__) for item in pub.main_sections],
+        })
+    except ValidationError as e:
+        logger.error(f"Validation error for publication ID {pub_id}: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+
 
 async def delete_publication(db: AsyncSession, pub_id: int):
-    pub = await get_publication_by_id(db, pub_id)
+    pub = await get_publication_by_id_raw(db, pub_id)
     if pub:
+        # Преобразуем в Pydantic-модель перед удалением
+        deleted_pub = PublicationResponse.model_validate(pub.__dict__)
         await db.delete(pub)
         await db.commit()
+        return {"detail": "Публикация удалена", "deleted_item": deleted_pub}
+
+    raise HTTPException(status_code=404, detail="Публикация не найдена")
 
 
 async def get_paginated_publication_base_info(
@@ -120,20 +203,28 @@ async def get_paginated_publication_base_info(
     query = select(PublicationBaseInfo)
     count_query = select(func.count()).select_from(PublicationBaseInfo)
 
-    # Фильтрация по языкам (Enum)
+    # Фильтрация по языкам (SET)
     if "languages" in filters and filters["languages"]:
         for lang in filters["languages"]:
-            query = query.where(PublicationBaseInfo.languages.like(f"%{lang.value}%"))
-            count_query = count_query.where(PublicationBaseInfo.languages.like(f"%{lang.value}%"))
+            # Используем FIND_IN_SET для работы с SET
+            query = query.where(text(f"FIND_IN_SET('{lang.value}', `Языки`)"))
+            count_query = count_query.where(text(f"FIND_IN_SET('{lang.value}', `Языки`)"))
 
-    # Фильтрация по остальным полям через LIKE
+    # Фильтрация по остальным полям
     for key, value in filters.items():
         if key == "languages":
             continue  # уже обработали выше
+
         if hasattr(PublicationBaseInfo, key) and value is not None:
             column = getattr(PublicationBaseInfo, key)
-            # Для строковых полей используем ilike
-            if isinstance(value, str):
+
+            # Специальная обработка для vak_category
+            if key == "vak_category":
+                # Преобразуем значение Enum в строку
+                query = query.where(column == value.value if isinstance(value, VakCategoryEnum) else value)
+                count_query = count_query.where(column == value.value if isinstance(value, VakCategoryEnum) else value)
+            elif isinstance(value, str):
+                # Для строковых полей используем ilike
                 query = query.where(column.ilike(f"%{value}%"))
                 count_query = count_query.where(column.ilike(f"%{value}%"))
             else:
@@ -141,9 +232,11 @@ async def get_paginated_publication_base_info(
                 query = query.where(column == value)
                 count_query = count_query.where(column == value)
 
+    # Пагинация
     offset = (page - 1) * per_page
     query = query.offset(offset).limit(per_page)
 
+    # Выполнение запросов
     result = await db.execute(query)
     items = result.scalars().all()
 
@@ -165,10 +258,18 @@ async def get_paginated_publication_actual_specialty(
     for key, value in filters.items():
         if hasattr(PublicationActualSpecialty, key) and value is not None:
             column = getattr(PublicationActualSpecialty, key)
-            if isinstance(value, str):
+
+            # Специальная обработка для Enum
+            if isinstance(column.type, Enum) and isinstance(value, str):
+                # Преобразуем значение Enum в строку
+                query = query.where(column == value)
+                count_query = count_query.where(column == value)
+            elif isinstance(value, str):
+                # Для строковых полей используем ilike
                 query = query.where(column.ilike(f"%{value}%"))
                 count_query = count_query.where(column.ilike(f"%{value}%"))
             else:
+                # Для остальных (например, int) — обычное сравнение
                 query = query.where(column == value)
                 count_query = count_query.where(column == value)
 

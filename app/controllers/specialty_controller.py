@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
 from app.core.security import require_role
-from app.schemas.specialty import SpecialtyCreate, SpecialtyUpdate, SpecialtyOut
+from app.schemas.specialty import SpecialtyCreate, SpecialtyUpdate, SpecialtyOut, SpecialtyResponse
 from app.services import specialty_service
 
 router = APIRouter()
@@ -28,7 +28,7 @@ async def get_specialty(specialty_id: int = Path(...), db: AsyncSession = Depend
 
 @router.post(
     "/",
-    response_model=SpecialtyOut,
+    response_model=SpecialtyResponse,
     dependencies=[Depends(require_role("admin"))],
     description="Создает новую специальность. Доступ разрешен только администраторам."
 )
@@ -37,7 +37,7 @@ async def create_specialty(data: SpecialtyCreate, db: AsyncSession = Depends(get
 
 @router.put(
     "/{specialty_id}",
-    response_model=SpecialtyOut,
+    response_model=SpecialtyResponse,
     dependencies=[Depends(require_role("admin"))],
     description="Обновляет специальность по её ID. Если специальность не найдена, возвращается ошибка 404. "
                 "Доступ разрешен только администраторам."

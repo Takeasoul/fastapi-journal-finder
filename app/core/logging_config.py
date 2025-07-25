@@ -17,7 +17,7 @@ def setup_logging():
             "console": {
                 "class": "logging.StreamHandler",
                 "formatter": "default",
-                "level": "DEBUG",
+                "level": "DEBUG",  # Уровень DEBUG покажет SQL-запросы
             },
             "file": {
                 "class": "logging.FileHandler",
@@ -26,14 +26,10 @@ def setup_logging():
                 "filename": "app.log",
             },
         },
-        "root": {
-            "handlers": ["console", "file"],
-            "level": "DEBUG",
-        },
         "loggers": {
-            "uvicorn": {
+            "sqlalchemy.engine": {  # Логгер для SQLAlchemy
                 "handlers": ["console", "file"],
-                "level": "INFO",
+                "level": "INFO",  # Уровень INFO покажет SQL-запросы
                 "propagate": False,
             },
             "app": {
@@ -41,6 +37,10 @@ def setup_logging():
                 "level": "DEBUG",
                 "propagate": False,
             },
+        },
+        "root": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
         },
     }
 

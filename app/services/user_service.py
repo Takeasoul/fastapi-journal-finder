@@ -1,4 +1,6 @@
-from sqlalchemy import func
+from typing import Optional
+
+from sqlalchemy import func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi import HTTPException, status
@@ -24,6 +26,37 @@ class UserService:
         users = list(result.scalars().all())
         return users, total_users
 
+    async def get_users_filtered(
+            self,
+            skip: int,
+            limit: int,
+            username: Optional[str] = None,
+            role_id: Optional[int] = None,
+            is_active: Optional[bool] = None
+    ) -> tuple[list[User], int]:
+        # Создаем базовый запрос
+        query = select(User)
+
+        # Добавляем фильтры, если они указаны
+        filters = []
+        if username:
+            filters.append(User.username.ilike(f"%{username}%"))  # Поиск по части имени (регистронезависимый)
+        if role_id is not None:
+            filters.append(User.role_id == role_id)
+        if is_active is not None:
+            filters.append(User.is_active == is_active)
+
+        # Применяем фильтры к запросу
+        if filters:
+            query = query.where(and_(*filters))
+
+        # Выполняем запрос с пагинацией
+        total_users = await self.db.scalar(select(func.count()).select_from(query.subquery()))
+        result = await self.db.execute(query.offset(skip).limit(limit))
+        users = list(result.scalars().all())
+
+        return users, total_users
+
     async def create_user(self, user_data: UserCreate) -> User:
         hashed_password = get_password_hash(user_data.password)
         new_user = User(
@@ -31,7 +64,7 @@ class UserService:
             password=hashed_password,
             ip=user_data.ip,
             role_id=user_data.role_id,
-            is_active=False,  # Новый пользователь неактивен до подтверждения
+            is_active=user_data.is_active,  # Новый пользователь неактивен до подтверждения
             confirmation_token=generate_confirmation_token()  # Генерация токена подтверждения
         )
         self.db.add(new_user)
@@ -64,20 +97,6 @@ class UserService:
 
     async def count_users(self) -> int:
         return await self.db.scalar(select(func.count()).select_from(User))
-
-    async def activate_user_by_id(self, user_id: int) -> dict:
-        result = await self.db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        if not user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
-        if user.is_active:
-            raise HTTPException(status_code=400, detail="Аккаунт пользователя уже активирован")
-
-        # Активация аккаунта
-        user.is_active = True
-        user.confirmation_token = None  # Очищаем токен после использования
-        await self.db.commit()
-        return {"message": "Аккаунт подтвержден успешно"}
 
     async def activate_user(self, user_id: int = None, email: str = None) -> dict:
         if user_id is not None:

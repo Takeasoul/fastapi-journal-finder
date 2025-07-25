@@ -1,4 +1,6 @@
 from math import ceil
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query, Path, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,19 +14,25 @@ router = APIRouter(dependencies=[Depends(require_role("admin"))])
 
 @router.get(
     "/",
-    description="Получает список всех пользователей с поддержкой пагинации. "
+    description="Получает список всех пользователей с поддержкой пагинации и фильтрации. "
                 "- **page**: Номер страницы (начинается с 1). "
                 "- **page_size**: Количество записей на странице (максимум 100). "
+                "- **username**: Фильтр по имени пользователя (email). "
+                "- **role_id**: Фильтр по ID роли. "
+                "- **is_active**: Фильтр по состоянию активации (True/False). "
                 "Доступно только администраторам."
 )
 async def get_users(
     db: AsyncSession = Depends(get_db1_session),
     page: int = Query(1, ge=1, description="Номер страницы"),
-    page_size: int = Query(10, ge=1, le=100, description="Количество записей на странице")
+    page_size: int = Query(10, ge=1, le=100, description="Количество записей на странице"),
+    username: Optional[str] = Query(None, description="Фильтр по имени пользователя (email)"),
+    role_id: Optional[int] = Query(None, description="Фильтр по ID роли"),
+    is_active: Optional[bool] = Query(None, description="Фильтр по состоянию активации")
 ):
     service = UserService(db)
     skip = (page - 1) * page_size
-    users, total_users = await service.get_users(skip, page_size)
+    users, total_users = await service.get_users_filtered(skip, page_size, username=username, role_id=role_id, is_active=is_active)
     total_pages = ceil(total_users / page_size)
     return {
         "users": users,

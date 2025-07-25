@@ -5,14 +5,15 @@ from app.schemas.role import RoleResponse  # Абсолютный импорт
 class UserCreate(BaseModel):
     username: EmailStr
     password: str
-    ip: Optional[str]
+    ip: Optional[str] = None
     role_id: int
+    is_active: Optional[bool] = None
 
 class UserUpdate(BaseModel):
-    username: Optional[EmailStr]
-    password: Optional[str]
-    ip: Optional[str]
-    role_id: Optional[int]
+    username: Optional[EmailStr] = None
+    password: Optional[str] = None
+    ip: Optional[str] = None
+    role_id: Optional[int] = None
     is_active: Optional[bool] = None
 
 class UserResponse(BaseModel):

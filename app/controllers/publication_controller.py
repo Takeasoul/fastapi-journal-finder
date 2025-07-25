@@ -5,10 +5,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Path, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
-from app.core.security import require_role
+from app.core.security import require_role, logger
 from app.schemas.publication import PublicationOut, PublicationCreate, PublicationUpdate, PaginatedResponse, \
-    PublicationFilter
-from app.schemas.publication_actual_specialty import PublicationActualSpecialtyOut, PublicationActualSpecialtyFilter
+    PublicationFilter, PublicationResponse
+from app.schemas.publication_actual_specialty import PublicationActualSpecialtyOut, PublicationActualSpecialtyFilter, \
+    PublicationActualSpecialtyResponse
 from app.schemas.publication_base_info import PublicationBaseInfoOut, PaginatedBaseInfoResponse, \
     PublicationBaseInfoFilter
 from app.services import publication_service
@@ -23,20 +24,26 @@ router = APIRouter()
 )
 async def list_publications_paginated(
     db: AsyncSession = Depends(get_db1_session),
-    page: int = Query(1, ge=1, description="Page number"),
-    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
     filters: PublicationFilter = Depends()
 ):
-    filter_dict = filters.model_dump(exclude_none=True)
-    publications, total = await publication_service.get_paginated_publications(db, page, per_page, filter_dict)
-    total_pages = ceil(total / per_page)
-    return PaginatedResponse(
-        items=publications,
-        total=total,
-        page=page,
-        per_page=per_page,
-        total_pages=total_pages
-    )
+    try:
+        filter_dict = filters.model_dump(exclude_none=True)
+        publications, total = await publication_service.get_paginated_publications(db, page, per_page, filter_dict)
+        total_pages = ceil(total / per_page)
+        return PaginatedResponse(
+            items=publications,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in list_publications_paginated: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.get(
     "/getallwithbaseinfo",
@@ -61,7 +68,7 @@ async def list_publication_base_info(
         total_pages=total_pages
     )
 
-@router.get("/getallwithactualspecialty", response_model=PaginatedResponse,  dependencies=[Depends(require_role("user"))], description = " Получает список публикаций с актуальными специальностями с поддержкой пагинации и фильтрации. **page**: Номер страницы (начинается с 1). - **per_page**: Количество элементов на странице (максимум 100). - **filters**: Фильтры для поиска публикаций (например, специальность, дата).")
+@router.get("/getallwithactualspecialty", response_model=PublicationActualSpecialtyResponse,  dependencies=[Depends(require_role("user"))], description = " Получает список публикаций с актуальными специальностями с поддержкой пагинации и фильтрации. **page**: Номер страницы (начинается с 1). - **per_page**: Количество элементов на странице (максимум 100). - **filters**: Фильтры для поиска публикаций (например, специальность, дата).")
 async def list_publication_actual_specialty(
     db: AsyncSession = Depends(get_db1_session),
     page: int = Query(1, ge=1, description="Page number"),
@@ -71,8 +78,8 @@ async def list_publication_actual_specialty(
     filter_dict = filters.model_dump(exclude_none=True)
     items, total = await publication_service.get_paginated_publication_actual_specialty(db, page, per_page, filter_dict)
     total_pages = ceil(total / per_page)
-    return PaginatedResponse(
-        items=items,
+    return PublicationActualSpecialtyResponse(
+        items=[PublicationActualSpecialtyOut.model_validate(obj) for obj in items],
         total=total,
         page=page,
         per_page=per_page,
@@ -81,19 +88,24 @@ async def list_publication_actual_specialty(
 
 @router.get(
     "/{pub_id}",
-    response_model=PublicationOut,
+    response_model=PublicationResponse,
     dependencies=[Depends(require_role("user"))],
     description="Получает информацию о публикации по её ID. Если публикация не найдена, возвращается ошибка 404."
 )
-async def get_publication(pub_id: int = Path(...), db: AsyncSession = Depends(get_db1_session)):
-    pub = await publication_service.get_publication_by_id(db, pub_id)
-    if not pub:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Публикация не найдена")
-    return pub
-
+async def get_publication(pub_id: int, db: AsyncSession = Depends(get_db1_session)):
+    try:
+        pub = await publication_service.get_publication_by_id(db, pub_id)
+        if not pub:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Публикация не найдена")
+        return pub
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in get_publication: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 @router.post(
     "/",
-    response_model=PublicationOut,
+    response_model=PublicationResponse,
     dependencies=[Depends(require_role("admin"))],
     description="Создает новую публикацию. Доступно только администраторам."
 )
@@ -102,7 +114,7 @@ async def create_publication(data: PublicationCreate, db: AsyncSession = Depends
 
 @router.put(
     "/{pub_id}",
-    response_model=PublicationOut,
+    response_model=PublicationResponse,
     dependencies=[Depends(require_role("admin"))],
     description="Обновляет информацию о публикации по её ID. Если публикация не найдена, возвращается ошибка 404. "
                 "Доступно только администраторам."

@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Path, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
+
 from app.core.database import get_db1_session
-from app.core.security import require_role
+from app.core.security import require_role, logger
 from app.schemas.grnti import GrntiCreate, GrntiUpdate, GrntiOut
 from app.services import grnti_service
 
@@ -16,7 +18,16 @@ router = APIRouter()
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
 async def list_grnti(db: AsyncSession = Depends(get_db1_session)):
-    return await grnti_service.get_all_grnti(db)
+    try:
+        grnti_list = await grnti_service.get_all_grnti(db)
+        if not grnti_list:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Список ГРНТИ пуст")
+        return grnti_list
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in list_grnti: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.get(
     "/{grnti_id}",
@@ -28,10 +39,13 @@ async def list_grnti(db: AsyncSession = Depends(get_db1_session)):
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
 async def get_grnti(grnti_id: int = Path(...), db: AsyncSession = Depends(get_db1_session)):
-    grnti = await grnti_service.get_grnti_by_id(db, grnti_id)
-    if not grnti:
-        raise HTTPException(status_code=404, detail="ГРНТИ не найден")
-    return grnti
+    try:
+        return await grnti_service.get_grnti_by_id(db, grnti_id)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in get_grnti: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.post(
     "/",
@@ -42,7 +56,13 @@ async def get_grnti(grnti_id: int = Path(...), db: AsyncSession = Depends(get_db
                 "Доступ разрешен только администраторам."
 )
 async def create_grnti(data: GrntiCreate, db: AsyncSession = Depends(get_db1_session)):
-    return await grnti_service.create_grnti(db, data)
+    try:
+        return await grnti_service.create_grnti(db, data)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in create_grnti: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.put(
     "/{grnti_id}",
@@ -54,10 +74,16 @@ async def create_grnti(data: GrntiCreate, db: AsyncSession = Depends(get_db1_ses
                 "Доступ разрешен только администраторам."
 )
 async def update_grnti(grnti_id: int, data: GrntiUpdate, db: AsyncSession = Depends(get_db1_session)):
-    updated_grnti = await grnti_service.update_grnti(db, grnti_id, data)
-    if not updated_grnti:
-        raise HTTPException(status_code=404, detail="ГРНТИ не найден")
-    return updated_grnti
+    try:
+        updated_grnti = await grnti_service.update_grnti(db, grnti_id, data)
+        if not updated_grnti:
+            raise HTTPException(status_code=404, detail="ГРНТИ не найден")
+        return updated_grnti
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in update_grnti: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.delete(
     "/{grnti_id}",
@@ -68,7 +94,13 @@ async def update_grnti(grnti_id: int, data: GrntiUpdate, db: AsyncSession = Depe
                 "Доступ разрешен только администраторам."
 )
 async def delete_grnti(grnti_id: int, db: AsyncSession = Depends(get_db1_session)):
-    success = await grnti_service.delete_grnti(db, grnti_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="ГРНТИ не найден")
-    return {"detail": "ГРНТИ удален"}
+    try:
+        success = await grnti_service.delete_grnti(db, grnti_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="ГРНТИ не найден")
+        return {"detail": "ГРНТИ удален"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in delete_grnti: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

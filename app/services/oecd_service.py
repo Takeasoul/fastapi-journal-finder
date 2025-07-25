@@ -22,7 +22,7 @@ async def update_oecd(db: AsyncSession, oecd_id: int, data: OECDUpdate):
     oecd = await get_oecd_by_id(db, oecd_id)
     if oecd is None:
         return None
-    for field, value in data.dict().items():
+    for field, value in data.dict(exclude_unset=True).items():
         setattr(oecd, field, value)
     await db.commit()
     await db.refresh(oecd)

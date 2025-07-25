@@ -1,14 +1,22 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
+
 from app.models.actual_oecd import ActualOECD
 from app.schemas.actual_oecd import ActualOECDCreate, ActualOECDUpdate
 
 async def get_all_actual_oecd(db: AsyncSession):
-    result = await db.execute(select(ActualOECD))
+    result = await db.execute(
+        select(ActualOECD).options(joinedload(ActualOECD.oecd))
+    )
     return result.scalars().all()
 
 async def get_actual_oecd_by_id(db: AsyncSession, actual_oecd_id: int):
-    result = await db.execute(select(ActualOECD).where(ActualOECD.id == actual_oecd_id))
+    result = await db.execute(
+        select(ActualOECD)
+        .where(ActualOECD.id == actual_oecd_id)
+        .options(joinedload(ActualOECD.oecd))
+    )
     return result.scalar_one_or_none()
 
 async def create_actual_oecd(db: AsyncSession, data: ActualOECDCreate):
@@ -22,7 +30,7 @@ async def update_actual_oecd(db: AsyncSession, actual_oecd_id: int, data: Actual
     record = await get_actual_oecd_by_id(db, actual_oecd_id)
     if not record:
         return None
-    for field, value in data.dict().items():
+    for field, value in data.dict(exclude_unset=True).items():
         setattr(record, field, value)
     await db.commit()
     await db.refresh(record)

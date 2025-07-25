@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 class UGSNBase(BaseModel):
@@ -8,8 +10,8 @@ class UGSNCreate(UGSNBase):
     pass
 
 class UGSNUpdate(UGSNBase):
-    pass
-
+    code: Optional[str] = None
+    name: Optional[str] = None
 class UGSNOut(UGSNBase):
     id: int
 

@@ -4,6 +4,11 @@ from pydantic import BaseModel
 from typing import Optional, Set, List
 from datetime import date
 
+from app.schemas.actual_grnti import ActualGRNTIBase, ActualGRNTIResponse
+from app.schemas.actual_oecd import ActualOECDBase, ActualOECDResponse
+from app.schemas.main_section import MainSectionBase, MainSectionResponse
+
+
 class SerialTypeEnum11(str, Enum):
     PERIODIC = "периодическое издание"
 
@@ -76,16 +81,58 @@ class PublicationCreate(PublicationBase):
     pass
 
 class PublicationUpdate(PublicationBase):
-    pass
+    el_id: int = None
+    vak_id: Optional[int] = None
+    name: str = None
+    serial_type: SerialTypeEnum11 = None
+    serial_elem: Optional[SerialElemEnum] = None
+    purpose: Optional[PurposeEnum] = None
+    distribution: Optional[DistributionEnum] = None
+    access: Optional[AccessEnum] = None
+    main_finance: Optional[MainFinanceEnum] = None
+    multidisc: MultidiscEnum = None
+    language: Optional[Set[LanguageEnum]] = None
+    el_updated_at: Optional[date] = None
 
-class PublicationOut(PublicationBase):
+class PublicationOut(BaseModel):
     id: int
+    el_id: int
+    vak_id: Optional[int] = None
+    name: str
+    serial_type: str
+    serial_elem: Optional[str] = None
+    purpose: Optional[str] = None
+    distribution: Optional[str] = None
+    access: Optional[str] = None
+    main_finance: Optional[str] = None
+    multidisc: str
+    language: Optional[List[str]] = None
+    el_updated_at: Optional[date] = None
+    actual_oecd_items: Optional[List[ActualOECDResponse]] = None
+    actual_grnti_items: Optional[List[ActualGRNTIResponse]] = None
+    main_sections: Optional[List[MainSectionResponse]] = None
+    class Config:
+        from_attributes = True
 
+class PublicationResponse(BaseModel):
+    id: int
+    el_id: int
+    vak_id: Optional[int] = None
+    name: str
+    serial_type: str
+    serial_elem: Optional[str] = None
+    purpose: Optional[str] = None
+    distribution: Optional[str] = None
+    access: Optional[str] = None
+    main_finance: Optional[str] = None
+    multidisc: str
+    language: Optional[List[str]] = None
+    el_updated_at: Optional[date] = None
     class Config:
         from_attributes = True
 
 class PaginatedResponse(BaseModel):
-    items: List[PublicationOut]
+    items: List[PublicationResponse]
     total: int
     page: int
     per_page: int
@@ -105,3 +152,5 @@ class PublicationFilter(BaseModel):
     languages: Optional[Set[LanguageEnum]] = None
     el_updated_at_from: Optional[date] = None
     el_updated_at_to: Optional[date] = None
+
+

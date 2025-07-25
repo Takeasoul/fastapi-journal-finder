@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
 from app.schemas.ip_whitelist import IPWhitelistCreate, IPWhitelistUpdate, IPWhitelistResponse
@@ -8,40 +9,44 @@ from app.models.IPWhitelist import IPWhitelist
 
 router = APIRouter()
 
-@router.post("/ip-whitelist", summary="Добавить IP-сеть в whitelist")
+@router.post("/ip-whitelist", summary="Добавить IP-сеть в whitelist", response_model=IPWhitelistResponse)
 async def add_ip_whitelist(
     data: IPWhitelistCreate,
-    db: AsyncSession = Depends(get_db1_session)
+    db: AsyncSession = Depends(get_db1_session),
 ):
     service = IPWhitelistService(db)
     try:
-        entry = await service.add_ip_whitelist(data.ip_network, data.organization_name)
-        return {"message": "Запись добавлена", "entry": entry}
+        entry = await service.add_ip_whitelist(
+            ip_network=data.ip_network,
+            organization_name=data.organization_name,
+        )
+        return entry
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.delete("/ip-whitelist/{ip_network}", summary="Удалить IP-сеть из whitelist")
 async def delete_ip_whitelist(
-    ip_network: str,
+    id: int,
     db: AsyncSession = Depends(get_db1_session)
 ):
     service = IPWhitelistService(db)
     try:
-        success = await service.delete_ip_whitelist(ip_network)
+        success = await service.delete_ip_whitelist(id)
         if success:
             return {"message": "Запись удалена"}
+        return None
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-@router.put("/ip-whitelist/{ip_network}", summary="Обновить запись в whitelist")
+@router.put("/ip-whitelist/{id}", summary="Обновить запись в whitelist")
 async def update_ip_whitelist(
-    ip_network: str,
+    id: int,
     data: IPWhitelistUpdate,
-    db: AsyncSession = Depends(get_db1_session)
+    db: AsyncSession = Depends(get_db1_session),
 ):
     service = IPWhitelistService(db)
     try:
-        entry = await service.update_ip_whitelist(ip_network, data.organization_name)
+        entry = await service.update_ip_whitelist(id, data)
         return {"message": "Запись обновлена", "entry": entry}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

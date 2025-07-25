@@ -1,14 +1,22 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
+
 from app.models.actual_grnti import ActualGRNTI
 from app.schemas.actual_grnti import ActualGRNTICreate, ActualGRNTIUpdate
 
 async def get_all_actual_grnti(db: AsyncSession):
-    result = await db.execute(select(ActualGRNTI))
+    result = await db.execute(
+        select(ActualGRNTI).options( joinedload(ActualGRNTI.grnti))
+    )
     return result.scalars().all()
 
 async def get_actual_grnti_by_id(db: AsyncSession, actual_grnti_id: int):
-    result = await db.execute(select(ActualGRNTI).where(ActualGRNTI.id == actual_grnti_id))
+    result = await db.execute(
+        select(ActualGRNTI)
+        .where(ActualGRNTI.id == actual_grnti_id)
+        .options(joinedload(ActualGRNTI.grnti))
+    )
     return result.scalar_one_or_none()
 
 async def create_actual_grnti(db: AsyncSession, data: ActualGRNTICreate):
@@ -22,7 +30,7 @@ async def update_actual_grnti(db: AsyncSession, actual_grnti_id: int, data: Actu
     record = await get_actual_grnti_by_id(db, actual_grnti_id)
     if record is None:
         return None
-    for field, value in data.dict().items():
+    for field, value in data.dict(exclude_unset=True).items():
         setattr(record, field, value)
     await db.commit()
     await db.refresh(record)

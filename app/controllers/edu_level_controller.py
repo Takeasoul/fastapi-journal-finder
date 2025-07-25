@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, Path, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
+
 from app.core.database import get_db1_session
-from app.core.security import require_role
+from app.core.security import require_role, logger
 from app.schemas.edu_level import (
     EduLevelOut,
     EduLevelCreate,
@@ -21,7 +23,16 @@ router = APIRouter()
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
 async def list_edu_levels(db: AsyncSession = Depends(get_db1_session)):
-    return await edu_level_service.get_all_edu_levels(db)
+    try:
+        edu_levels = await edu_level_service.get_all_edu_levels(db)
+        if not edu_levels:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Список уровней образования пуст")
+        return edu_levels
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in list_edu_levels: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get(
@@ -34,10 +45,13 @@ async def list_edu_levels(db: AsyncSession = Depends(get_db1_session)):
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
 async def get_edu_level(edu_level_id: int = Path(...), db: AsyncSession = Depends(get_db1_session)):
-    edu_level = await edu_level_service.get_edu_level_by_id(db, edu_level_id)
-    if not edu_level:
-        raise HTTPException(status_code=404, detail="Уровень образования не найден")
-    return edu_level
+    try:
+        return await edu_level_service.get_edu_level_by_id(db, edu_level_id)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in get_edu_level: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.post(
@@ -49,7 +63,13 @@ async def get_edu_level(edu_level_id: int = Path(...), db: AsyncSession = Depend
                 "Доступ разрешен только администраторам."
 )
 async def create_edu_level(data: EduLevelCreate, db: AsyncSession = Depends(get_db1_session)):
-    return await edu_level_service.create_edu_level(db, data)
+    try:
+        return await edu_level_service.create_edu_level(db, data)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in create_edu_level: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.put(
@@ -62,10 +82,16 @@ async def create_edu_level(data: EduLevelCreate, db: AsyncSession = Depends(get_
                 "Доступ разрешен только администраторам."
 )
 async def update_edu_level(edu_level_id: int, data: EduLevelUpdate, db: AsyncSession = Depends(get_db1_session)):
-    updated_edu_level = await edu_level_service.update_edu_level(db, edu_level_id, data)
-    if not updated_edu_level:
-        raise HTTPException(status_code=404, detail="Уровень образования не найден")
-    return updated_edu_level
+    try:
+        updated_edu_level = await edu_level_service.update_edu_level(db, edu_level_id, data)
+        if not updated_edu_level:
+            raise HTTPException(status_code=404, detail="Уровень образования не найден")
+        return updated_edu_level
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in update_edu_level: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.delete(
@@ -77,7 +103,13 @@ async def update_edu_level(edu_level_id: int, data: EduLevelUpdate, db: AsyncSes
                 "Доступ разрешен только администраторам."
 )
 async def delete_edu_level(edu_level_id: int, db: AsyncSession = Depends(get_db1_session)):
-    success = await edu_level_service.delete_edu_level(db, edu_level_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Уровень образования не найден")
-    return {"detail": "Уровень образования удален"}
+    try:
+        success = await edu_level_service.delete_edu_level(db, edu_level_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Уровень образования не найден")
+        return {"detail": "Уровень образования удален"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in delete_edu_level: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

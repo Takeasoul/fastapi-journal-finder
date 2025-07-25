@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-class RoleCreateRequest(BaseModel):
+class RoleRequest(BaseModel):
     name: str
     parent_id: int | None = None
 

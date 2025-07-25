@@ -5,8 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.database import get_db1_session
-from app.core.security import require_role
-from app.schemas.journal import JournalCreate, JournalUpdate, JournalOut, PaginatedJournalResponse, JournalFilter
+from app.core.security import require_role, logger
+from app.schemas.journal import JournalCreate, JournalUpdate, JournalOut, PaginatedJournalResponse, JournalFilter, \
+    JournalResponse
 from app.services import journal_service
 
 router = APIRouter()
@@ -22,20 +23,26 @@ router = APIRouter()
 )
 async def list_journals_paginated(
     db: AsyncSession = Depends(get_db1_session),
-    page: int = Query(1, ge=1, description="Page number"),
-    per_page: int = Query(10, ge=1, le=100, description="Items per page"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
     filters: JournalFilter = Depends()
 ):
-    filter_dict = filters.model_dump(exclude_none=True)
-    items, total = await journal_service.get_paginated_journals(db, page, per_page, filter_dict)
-    total_pages = ceil(total / per_page)
-    return PaginatedJournalResponse(
-        items=items,
-        total=total,
-        page=page,
-        per_page=per_page,
-        total_pages=total_pages
-    )
+    try:
+        filter_dict = filters.model_dump(exclude_none=True)
+        items, total = await journal_service.get_paginated_journals(db, page, per_page, filter_dict)
+        total_pages = ceil(total / per_page)
+        return PaginatedJournalResponse(
+            items=items,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in list_journals_paginated: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.get(
     "/{journal_id}",
@@ -47,14 +54,20 @@ async def list_journals_paginated(
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
 async def get_journal(journal_id: int = Path(...), db: AsyncSession = Depends(get_db1_session)):
-    journal = await journal_service.get_journal_by_id(db, journal_id)
-    if not journal:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Журнал не найден")
-    return journal
+    try:
+        journal = await journal_service.get_journal_by_id(db, journal_id)
+        if not journal:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Журнал не найден")
+        return journal
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in get_journal: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.post(
     "/",
-    response_model=JournalOut,
+    response_model=JournalResponse,
     dependencies=[Depends(require_role("admin"))],
     summary="Создать новый журнал",
     description="Этот эндпоинт создает новую запись журнала в базе данных. "
@@ -65,7 +78,7 @@ async def create_journal(data: JournalCreate, db: AsyncSession = Depends(get_db1
 
 @router.put(
     "/{journal_id}",
-    response_model=JournalOut,
+    response_model=JournalResponse,
     dependencies=[Depends(require_role("admin"))],
     summary="Обновить журнал",
     description="Этот эндпоинт обновляет информацию о журнале по указанному ID. "
@@ -88,4 +101,4 @@ async def update_journal(journal_id: int, data: JournalUpdate, db: AsyncSession 
 )
 async def delete_journal(journal_id: int, db: AsyncSession = Depends(get_db1_session)):
     await journal_service.delete_journal(db, journal_id)
-    return {"detail": "Журнал не удален"}
+    return {"detail": "Журнал удален"}

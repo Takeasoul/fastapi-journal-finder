@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Path, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
-from app.core.security import require_role
+from app.core.security import require_role, logger
 from app.schemas.index import IndexOut, IndexCreate, IndexUpdate
 from app.services import index_service
 
@@ -16,7 +16,16 @@ router = APIRouter()
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
 async def list_indexes(db: AsyncSession = Depends(get_db1_session)):
-    return await index_service.get_all_indexes(db)
+    try:
+        indexes = await index_service.get_all_indexes(db)
+        if not indexes:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Список индексаций пуст")
+        return indexes
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in list_indexes: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.get(
     "/{pub_id}",
@@ -28,10 +37,16 @@ async def list_indexes(db: AsyncSession = Depends(get_db1_session)):
                 "Доступ разрешен только пользователям с ролью 'user' и выше."
 )
 async def get_index(pub_id: int = Path(...), db: AsyncSession = Depends(get_db1_session)):
-    idx = await index_service.get_index_by_pub_id(db, pub_id)
-    if not idx:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Индексация не найдена")
-    return idx
+    try:
+        idx = await index_service.get_index_by_pub_id(db, pub_id)
+        if not idx:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Индексация не найдена")
+        return idx
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in get_index: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.post(
     "/",
@@ -42,7 +57,13 @@ async def get_index(pub_id: int = Path(...), db: AsyncSession = Depends(get_db1_
                 "Доступ разрешен только администраторам."
 )
 async def create_index(data: IndexCreate, db: AsyncSession = Depends(get_db1_session)):
-    return await index_service.create_index(db, data)
+    try:
+        return await index_service.create_index(db, data)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in create_index: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.put(
     "/{pub_id}",
@@ -54,10 +75,16 @@ async def create_index(data: IndexCreate, db: AsyncSession = Depends(get_db1_ses
                 "Доступ разрешен только администраторам."
 )
 async def update_index(pub_id: int, data: IndexUpdate, db: AsyncSession = Depends(get_db1_session)):
-    idx = await index_service.update_index(db, pub_id, data)
-    if not idx:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Индексация не найдена")
-    return idx
+    try:
+        idx = await index_service.update_index(db, pub_id, data)
+        if not idx:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Индексация не найдена")
+        return idx
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in update_index: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 @router.delete(
     "/{pub_id}",
@@ -68,5 +95,11 @@ async def update_index(pub_id: int, data: IndexUpdate, db: AsyncSession = Depend
                 "Доступ разрешен только администраторам."
 )
 async def delete_index(pub_id: int, db: AsyncSession = Depends(get_db1_session)):
-    await index_service.delete_index(db, pub_id)
-    return {"detail": "Индексация удалена"}
+    try:
+        await index_service.delete_index(db, pub_id)
+        return {"detail": "Индексация удалена"}
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in delete_index: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

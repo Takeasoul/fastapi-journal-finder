@@ -7,7 +7,9 @@ class IPWhitelistCreate(BaseModel):
     organization_name: Optional[str] = None
 
 class IPWhitelistUpdate(BaseModel):
-    organization_name: str
+    id: Optional[int] = None
+    ip_network: Optional[str] = None
+    organization_name: Optional[str] = None
 
 class IPWhitelistResponse(BaseModel):
     id: int

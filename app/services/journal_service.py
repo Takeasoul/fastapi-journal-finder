@@ -1,19 +1,34 @@
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi import HTTPException
-
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from app.models.journal import Journal
 from app.schemas.journal import JournalCreate, JournalUpdate
 
 
-async def get_all_journals(db: AsyncSession):
-    result = await db.execute(select(Journal))
-    return result.scalars().all()
-
 async def get_journal_by_id(db: AsyncSession, journal_id: int):
-    result = await db.execute(select(Journal).where(Journal.id == journal_id))
-    return result.scalar_one_or_none()
+    try:
+        result = await db.execute(
+            select(Journal)
+            .where(Journal.id == journal_id)
+            .options(joinedload(Journal.publication))
+        )
+        journal = result.scalar_one_or_none()
+        if not journal:
+            raise HTTPException(status_code=404, detail="Журнал не найден")
+        return journal
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail="Ошибка при получении журнала")
+
+async def get_all_journals(db: AsyncSession):
+    try:
+        result = await db.execute(select(Journal).options(joinedload(Journal.publication)))
+        return result.scalars().all()
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail="Ошибка при получении списка журналов")
 
 async def create_journal(db: AsyncSession, data: JournalCreate):
     journal = Journal(**data.dict())
@@ -45,7 +60,7 @@ async def get_paginated_journals(
 ):
     from app.models.journal import Journal
 
-    query = select(Journal)
+    query = select(Journal).options(selectinload(Journal.publication))
     count_query = select(func.count()).select_from(Journal)
 
     # Диапазон по дате

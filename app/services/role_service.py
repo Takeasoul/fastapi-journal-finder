@@ -3,30 +3,45 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.models.role import Role
 from app.models.user import User
+from app.schemas.role import RoleRequest
+
 
 class RoleService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_role(self, name: str) -> dict:
-        result = await self.db.execute(select(Role).where(Role.name == name))
+    async def create_role(self, data: RoleRequest) -> dict:
+        # Проверяем, существует ли роль с таким именем
+        result = await self.db.execute(select(Role).where(Role.name == data.name))
         if result.scalars().first():
             raise HTTPException(status_code=400, detail="Роль уже существует")
-        role = Role(name=name)
+
+        # Создаем новую роль
+        role = Role(
+            name=data.name,
+            parent_id=data.parent_id if data.parent_id else None
+        )
+
+        # Добавляем роль в базу данных
         self.db.add(role)
         await self.db.commit()
+
         return {"message": "Роль успешно создана"}
 
     async def get_roles(self) -> list:
         result = await self.db.execute(select(Role))
         return list(result.scalars().all())
 
-    async def update_role(self, role_id: int, name: str) -> dict:
+    async def update_role(self, role_id: int, data: RoleRequest) -> dict:
         result = await self.db.execute(select(Role).where(Role.id == role_id))
         role = result.scalars().first()
         if not role:
             raise HTTPException(status_code=404, detail="Роль не найдена")
-        role.name = name
+        if data.name:
+            role.name = data.name
+        if data.parent_id:
+            role.parent_id = data.parent_id
+
         await self.db.commit()
         return {"message": "Роль обновлена успешно"}
 

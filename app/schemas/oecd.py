@@ -8,7 +8,8 @@ class OECDCreate(OECDBase):
     pass
 
 class OECDUpdate(OECDBase):
-    pass
+    code: str
+    name: str
 
 class OECDOut(OECDBase):
     id: int
