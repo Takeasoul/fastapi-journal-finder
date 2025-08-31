@@ -15,7 +15,7 @@ class EduLevelUpdate(EduLevelBase):
 
 class EduLevelOut(BaseModel):
     id: int
-    name: str
+    name: str = None
 
     class Config:
         from_attributes = True

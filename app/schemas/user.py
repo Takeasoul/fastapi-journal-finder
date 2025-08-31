@@ -18,9 +18,9 @@ class UserUpdate(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
-    username: EmailStr
-    ip: Optional[str]
-    role: RoleResponse
+    username: EmailStr = None
+    ip: Optional[str] = None
+    role: RoleResponse = None
 
     class Config:
         from_attributes = True

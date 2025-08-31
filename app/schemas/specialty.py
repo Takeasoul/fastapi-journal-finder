@@ -21,8 +21,8 @@ class SpecialtyUpdate(SpecialtyBase):
 
 class SpecialtyOut(BaseModel):
     id: int
-    code: str
-    name: str
+    code: str = None
+    name: str = None
     ugsn: Optional[UGSNOut] = None
     level: Optional[EduLevelOut] = None
 
@@ -31,10 +31,10 @@ class SpecialtyOut(BaseModel):
 
 class SpecialtyResponse(BaseModel):
     id: int
-    code: str
-    name: str
-    ugsn: Optional[int]
-    level_id: Optional[int]  # обязательно должно быть
+    code: str = None
+    name: str = None
+    ugsn: Optional[int] = None
+    level_id: Optional[int]   = None
 
     class Config:
         from_attributes = True

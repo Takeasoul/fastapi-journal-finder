@@ -116,16 +116,16 @@ class PublicationOut(BaseModel):
 
 class PublicationResponse(BaseModel):
     id: int
-    el_id: int
+    el_id: int = None
     vak_id: Optional[int] = None
-    name: str
-    serial_type: str
+    name: str = None
+    serial_type: str = None
     serial_elem: Optional[str] = None
     purpose: Optional[str] = None
     distribution: Optional[str] = None
     access: Optional[str] = None
     main_finance: Optional[str] = None
-    multidisc: str
+    multidisc: str = None
     language: Optional[List[str]] = None
     el_updated_at: Optional[date] = None
     class Config:
