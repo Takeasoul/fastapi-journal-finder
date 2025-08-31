@@ -20,7 +20,7 @@ class ReviewByEnum(str, enum.Enum):
 class ReviewBase(BaseModel):
     pub_id: int
     view: Optional[ViewEnum] = None
-    review_count: Optional[int] = None
+    review_count: Optional[str] = None
     rejected: Optional[int] = None
     period_pub: Optional[constr(max_length=15)] = None
     review_by: Optional[ReviewByEnum] = None
@@ -31,7 +31,7 @@ class ReviewCreate(ReviewBase):
 class ReviewUpdate(ReviewBase):
     pub_id: Optional[int] = None
     view: Optional[ViewEnum] = None
-    review_count: Optional[int] = None
+    review_count: Optional[str] = None
     rejected: Optional[int] = None
     period_pub: Optional[constr(max_length=15)] = None
     review_by: Optional[ReviewByEnum] = None

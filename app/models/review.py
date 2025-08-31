@@ -27,7 +27,7 @@ class Review(Base):
         SqlEnum(ViewEnum, native_enum=False, create_type=False, values_callable=lambda obj: [e.value for e in obj]),
         nullable=True
     )
-    review_count = Column(SmallInteger, nullable=True)
+    review_count = Column(String, nullable=True)
     rejected = Column(SmallInteger, nullable=True)
     period_pub = Column(String(15), nullable=True)
     review_by = Column(

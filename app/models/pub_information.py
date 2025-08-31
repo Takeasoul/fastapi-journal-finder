@@ -10,7 +10,7 @@ class PubInformation(Base):
     issn_print = Column(String(9), nullable=True)
     issn_elect = Column(String(9), nullable=True)
     issues_year = Column(SmallInteger, nullable=True)
-    arts_issue = Column(Integer, nullable=True)
+    arts_issue = Column(String, nullable=True)
     pages_issue = Column(Integer, nullable=True)
     founding = Column(String(4), nullable=True)
     release = Column(String(9), nullable=True)

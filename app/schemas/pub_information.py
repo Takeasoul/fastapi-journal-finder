@@ -5,7 +5,7 @@ class PubInformationBase(BaseModel):
     issn_print: Optional[str] = None
     issn_elect: Optional[str] = None
     issues_year: Optional[int] = None
-    arts_issue: Optional[int] = None
+    arts_issue: Optional[str] = None
     pages_issue: Optional[int] = None
     founding: Optional[str] = None
     release: Optional[str] = None
@@ -18,7 +18,7 @@ class PubInformationUpdate(PubInformationBase):
     issn_print: Optional[str] = None
     issn_elect: Optional[str] = None
     issues_year: Optional[int] = None
-    arts_issue: Optional[int] = None
+    arts_issue: Optional[str] = None
     pages_issue: Optional[int] = None
     founding: Optional[str] = None
     release: Optional[str] = None

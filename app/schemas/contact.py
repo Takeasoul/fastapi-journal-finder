@@ -12,6 +12,11 @@ class CountryEnum(str, enum.Enum):
     usa = "USA"
     russia_alt = "Russia"
     uk = "UK"
+    cyprus = "Cyprus"
+    austria = "Austria"
+    thailand = "Thailand"
+    taghikistan = "Таджикистан"
+    belarussia = "Беларусь"
 
 class ContactBase(BaseModel):
     pub_id: int
