@@ -42,7 +42,7 @@ class JournalFilter(BaseModel):
     url: Optional[str] = None
 
 class PaginatedJournalResponse(BaseModel):
-    items: List["JournalOut"]
+    items: Optional[List["JournalOut"]] = None
     total: int
     page: int
     per_page: int

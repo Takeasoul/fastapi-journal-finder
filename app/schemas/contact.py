@@ -26,8 +26,8 @@ class ContactCreate(ContactBase):
     pass
 
 class ContactUpdate(ContactBase):
-    pub_id: int = None
-    country: CountryEnum = None
+    pub_id: Optional[int] = None
+    country: Optional[CountryEnum] = None
     city_id: Optional[int] = None
     addr: Optional[str] = None
     email: Optional[EmailStr] = None

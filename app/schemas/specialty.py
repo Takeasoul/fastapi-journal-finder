@@ -21,8 +21,8 @@ class SpecialtyUpdate(SpecialtyBase):
 
 class SpecialtyOut(BaseModel):
     id: int
-    code: str = None
-    name: str = None
+    code: Optional[str] = None
+    name: Optional[str] = None
     ugsn: Optional[UGSNOut] = None
     level: Optional[EduLevelOut] = None
 
@@ -31,8 +31,8 @@ class SpecialtyOut(BaseModel):
 
 class SpecialtyResponse(BaseModel):
     id: int
-    code: str = None
-    name: str = None
+    code: Optional[str] = None
+    name: Optional[str] = None
     ugsn: Optional[int] = None
     level_id: Optional[int]   = None
 

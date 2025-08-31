@@ -32,7 +32,7 @@ class PublicationActualSpecialtyFilter(BaseModel):
     exclusion_date: Optional[str] = None
 
 class PublicationActualSpecialtyResponse(BaseModel):
-    items: List[PublicationActualSpecialtyOut]  # Use Pydantic model here
+    items: Optional[List[PublicationActualSpecialtyOut]] = None  # Use Pydantic model here
     total: int
     page: int
     per_page: int

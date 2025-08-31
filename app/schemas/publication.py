@@ -96,16 +96,16 @@ class PublicationUpdate(PublicationBase):
 
 class PublicationOut(BaseModel):
     id: int
-    el_id: int
+    el_id: Optional[int] = None
     vak_id: Optional[int] = None
-    name: str
-    serial_type: str
+    name: Optional[str] = None
+    serial_type: Optional[str]
     serial_elem: Optional[str] = None
     purpose: Optional[str] = None
     distribution: Optional[str] = None
     access: Optional[str] = None
     main_finance: Optional[str] = None
-    multidisc: str
+    multidisc: Optional[str] = None
     language: Optional[List[str]] = None
     el_updated_at: Optional[date] = None
     actual_oecd_items: Optional[List[ActualOECDResponse]] = None
@@ -115,19 +115,19 @@ class PublicationOut(BaseModel):
         from_attributes = True
 
 class PublicationResponse(BaseModel):
-    id: int
-    el_id: int = None
-    vak_id: Optional[int] = None
-    name: str = None
-    serial_type: str = None
-    serial_elem: Optional[str] = None
-    purpose: Optional[str] = None
-    distribution: Optional[str] = None
-    access: Optional[str] = None
-    main_finance: Optional[str] = None
-    multidisc: str = None
-    language: Optional[List[str]] = None
-    el_updated_at: Optional[date] = None
+    id: int  # Обязательное поле
+    el_id: Optional[int] = None  # Может быть None
+    vak_id: Optional[int] = None  # Может быть None
+    name: Optional[str] = None  # Может быть None
+    serial_type: Optional[str] = None  # Может быть None
+    serial_elem: Optional[str] = None  # Может быть None
+    purpose: Optional[str] = None  # Может быть None
+    distribution: Optional[str] = None  # Может быть None
+    access: Optional[str] = None  # Может быть None
+    main_finance: Optional[str] = None  # Может быть None
+    multidisc: Optional[str] = None  # Может быть None
+    language: Optional[List[str]] = None  # Может быть None
+    el_updated_at: Optional[date] = None  # Может быть None
     class Config:
         from_attributes = True
 

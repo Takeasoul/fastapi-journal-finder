@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 class RoleRequest(BaseModel):
@@ -6,8 +8,8 @@ class RoleRequest(BaseModel):
 
 class RoleResponse(BaseModel):
     id: int
-    name: str
-    parent_id: int | None = None
+    name: Optional[str]
+    parent_id: Optional[int] | None = None
 
     class Config:
         from_attributes = True
