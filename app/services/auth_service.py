@@ -79,8 +79,6 @@ class AuthService:
 
     async def login_user(self, data: LoginRequest, request: Request) -> TokenResponse:
         user_query = await self.db.execute(select(User).where(User.username == data.username))
-        if validate_email(data.username):
-            raise HTTPException(status_code=400, detail="Введите валидный email")
         user = user_query.scalar_one_or_none()
         if not user:
             logger.error(f"Ошибка авторизации: Пользователь '{data.username}' не найден")
