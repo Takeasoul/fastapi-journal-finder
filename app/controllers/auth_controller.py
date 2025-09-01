@@ -126,7 +126,7 @@ async def change_user_role(
     }
 
 
-@router.get(
+@router.post(
     "/confirm",
     summary="Подтверждение аккаунта",
     description="Этот эндпоинт активирует аккаунт пользователя по токену подтверждения."
@@ -154,7 +154,6 @@ async def confirm_account(
 )
 async def request_password_reset(
     email: str,
-    request: Request,
     db: AsyncSession = Depends(get_db1_session)
 ):
     result = await db.execute(select(User).where(User.username == email))
@@ -169,18 +168,17 @@ async def request_password_reset(
     await db.commit()
 
     # Отправка письма с инструкциями
-    base_url = f"{request.url.scheme}://{request.url.netloc}"
-    reset_path = "/api/v1/auth/reset-password"
+    base_url = f"http://localhost:5173/auth?mode=reset-password"
     query_params = {"token": reset_token}
 
-    reset_link = urljoin(base_url, reset_path) + "?" + urlencode(query_params)
+    reset_link = base_url + "?" + urlencode(query_params)
     await EmailService().send_email(
         recipient_email=email,
         subject="Сброс пароля",
         body=f"Нажмите на ссылку для сброса пароля: {reset_link}"
     )
 
-    return {"message": "Инструкции по смене пароля отправлены на почту"}
+    return {"message": "Инструкции по смене пароля отправлены на почту", reset_token: reset_token}
 
 @router.post(
     "/reset-password",

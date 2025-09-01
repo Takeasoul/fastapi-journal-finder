@@ -135,11 +135,11 @@ def decode_token(token: str, token_type: str) -> dict:
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def generate_confirmation_link(token: str, base_url: str) -> str:
-    query_params = {"token": token}
-    return urljoin(base_url, f"/confirm?{urlencode(query_params)}")
+#def generate_confirmation_link(token: str, base_url: str) -> str:
+ #   query_params = {"token": token}
+  #  return urljoin(base_url, f"/confirm?{urlencode(query_params)}")
 
 
-def generate_reset_password_link(token: str, base_url: str) -> str:
-    query_params = {"token": token}
-    return urljoin(base_url, f"/reset-password?{urlencode(query_params)}")
+#def generate_reset_password_link(token: str, base_url: str) -> str:
+ #   query_params = {"token": token}
+  #  return urljoin(base_url, f"/reset-password?{urlencode(query_params)}")

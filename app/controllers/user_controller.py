@@ -99,6 +99,7 @@ async def delete_user(
     "/activate",
     summary="Активация аккаунта по ID или email",
     description="Этот эндпоинт активирует аккаунт пользователя по его ID или email."
+                "Доступно только администраторам."
 )
 async def activate_account(
     user_id: int = None,
