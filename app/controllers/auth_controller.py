@@ -171,7 +171,7 @@ async def request_password_reset(
     base_url = f"http://localhost:5173/auth?mode=reset-password"
     query_params = {"token": reset_token}
 
-    reset_link = base_url + "?" + urlencode(query_params)
+    reset_link = base_url + "&" + urlencode(query_params)
     await EmailService().send_email(
         recipient_email=email,
         subject="Сброс пароля",
