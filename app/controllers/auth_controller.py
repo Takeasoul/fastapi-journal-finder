@@ -178,7 +178,7 @@ async def request_password_reset(
         body=f"Нажмите на ссылку для сброса пароля: {reset_link}"
     )
 
-    return {"message": "Инструкции по смене пароля отправлены на почту", reset_token: reset_token}
+    return {"message": "Инструкции по смене пароля отправлены на почту"}
 
 @router.post(
     "/reset-password",
