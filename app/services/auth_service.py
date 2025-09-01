@@ -1,3 +1,5 @@
+import re
+
 from fastapi import HTTPException, Request
 from pydantic import validate_email
 from sqlalchemy.future import select
@@ -24,7 +26,7 @@ class AuthService:
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Данный Email уже зарегистрирован")
 
-        if validate_email(data.username):
+        if not validate_email(data.username):
             raise HTTPException(status_code=400, detail="Введите валидный email")
 
         client_ip = request.headers.get("x-forwarded-for", request.client.host)
@@ -215,3 +217,16 @@ class AuthService:
             "message": "Письмо с подтверждением отправлено повторно. Пожалуйста подтвердите аккаунт при помощи ссылки на почте."}
 
 
+    def validate_email(email: str) -> bool:
+        # Регулярное выражение для базовой проверки формата email
+        email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+
+        # Проверка формата email
+        if not re.match(email_regex, email):
+            return False
+
+        # Проверка допустимых доменов (.ru или .com)
+        if not email.endswith(('.ru', '.com')):
+            return False
+
+        return True
