@@ -64,7 +64,6 @@ class AuthService:
 
 
         hashed_password = get_password_hash(data.password)
-        confirmation_token = generate_confirmation_token()
         new_user = User(
             username=data.username,
             password=hashed_password,
