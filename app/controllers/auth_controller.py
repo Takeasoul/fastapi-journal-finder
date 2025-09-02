@@ -135,6 +135,7 @@ async def confirm_account(
     token: str,
     db: AsyncSession = Depends(get_db1_session)
 ):
+    service = AuthService(db)
     result = await db.execute(select(User).where(User.confirmation_token == token))
     user = result.scalar_one_or_none()
     if not user:
@@ -143,6 +144,8 @@ async def confirm_account(
     # Активация аккаунта
     user.is_active = True
     user.confirmation_token = None  # Очищаем токен после использования
+    #TODO: УБРАТЬ ХАРДКОД ВЫДАЧИ ЮЗЕРА ПОСЛЕ ПОДТВЕРЖДЕНИЯ АККАУНТА
+    await service.change_user_role(user.id, 2)
     await db.commit()
 
     return {"message": "Аккаунт успешно подтвержден"}
