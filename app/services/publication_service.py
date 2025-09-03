@@ -345,13 +345,13 @@ async def get_paginated_publications_with_index_and_information(
             except ValueError:
                 continue
         elif key == "actual_specialty":
-                if value:
-                    query = query.join(Publication.actual_specialties).filter(
-                        ActualSpecialty.specialty_id.in_(value)
-                    )
-                    count_query = count_query.join(Publication.actual_specialties).filter(
-                        ActualSpecialty.specialty_id.in_(value)
-                    )
+            if value:
+                query = query.join(Publication.actual_specialties).filter(
+                    ActualSpecialty.specialty_id.in_(value)
+                )
+                count_query = count_query.join(Publication.actual_specialties).filter(
+                    ActualSpecialty.specialty_id.in_(value)
+                ).distinct(Publication.id)  # <- важная поправка
         elif hasattr(Publication, key):
             query = query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
