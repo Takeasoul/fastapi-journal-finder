@@ -381,6 +381,6 @@ async def get_paginated_publications_with_index_and_information(
             "pub_information": PubInformationResponse.model_validate(pub.pub_information.__dict__) if pub.pub_information else None,
             "index": IndexResponse.model_validate(pub.index.__dict__) if pub.index else None,
         }
-        publications_out.append(PublicationResponse.model_validate(pub_dict))
+        publications_out.append(PublicationFilterWithSpec.model_validate(pub_dict))
 
     return publications_out, total
