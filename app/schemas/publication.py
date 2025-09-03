@@ -148,9 +148,9 @@ class PublicationResponseWith(BaseModel):
     language: Optional[List[str]] = None
     el_updated_at: Optional[date] = None
 
-    actual_oecd_items: Optional[List] = []
-    actual_grnti_items: Optional[List] = []
-    main_sections: Optional[List] = []
+    actual_oecd_items: List[ActualOECDResponse] = []
+    actual_grnti_items: List[ActualGRNTIResponse] = []
+    main_sections: List[MainSectionResponse] = []
 
     pub_information: Optional[PubInformationResponse] = None
     index: Optional[IndexResponse] = None

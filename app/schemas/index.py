@@ -91,17 +91,17 @@ class IndexOut(IndexBase):
 
 
 class IndexResponse(BaseModel):
-    rinc: str
-    rinc_core: str
-    rsci: str
-    doaj: str
-    wos: str
-    wos_quart: str
-    scop: str
-    scop_quart: str
-    white: str
-    wite_level: str
-    vak: str
-    vak_cat: str
-    crossref: str
+    rinc: Optional[str] = None
+    rinc_core: Optional[str] = None
+    rsci: Optional[str] = None
+    doaj: Optional[str] = None
+    wos: Optional[str] = None
+    wos_quart: Optional[str] = None
+    scop: Optional[str] = None
+    scop_quart: Optional[str] = None
+    white: Optional[str] = None
+    wite_level: Optional[str] = None
+    vak: Optional[str] = None
+    vak_cat: Optional[str] = None
+    crossref: Optional[str] = None
     doi: Optional[str] = None

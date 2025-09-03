@@ -361,22 +361,15 @@ async def get_paginated_publications_with_index_and_information(
     offset = (page - 1) * per_page
     query = query.offset(offset).limit(per_page)
 
-    result = await db.execute(query)
-    publications = result.unique().scalars().all()
-
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
 
-    publications_out = []
-    for pub in publications:
-        pub_dict = {
-            **pub.__dict__,
-            "actual_oecd_items": [ActualOECDResponse.model_validate(item.__dict__) for item in pub.actual_oecd_items],
-            "actual_grnti_items": [ActualGRNTIResponse.model_validate(item.__dict__) for item in pub.actual_grnti_items],
-            "main_sections": [MainSectionResponse.model_validate(item.__dict__) for item in pub.main_sections],
-            "pub_information": PubInformationResponse.model_validate(pub.pub_information.__dict__) if pub.pub_information else None,
-            "index": IndexResponse.model_validate(pub.index.__dict__) if pub.index else None,
-        }
-        publications_out.append(PublicationResponseWith.model_validate(pub_dict))
+    result = await db.execute(query)
+    publications = result.unique().scalars().all()
+
+    publications_out = [
+        PublicationResponseWith.model_validate(pub, from_attributes=True)
+        for pub in publications
+    ]
 
     return publications_out, total
