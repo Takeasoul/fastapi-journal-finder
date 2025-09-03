@@ -367,12 +367,12 @@ async def get_paginated_publications_with_index_and_information(
                 logger.warning(f"Invalid enum value for {key}: {value}")
                 continue
 
-        elif key == "actual_specialty":
-            logger.info(f"Applying actual_specialty filter with value: {value}")
+        elif key == "speciality_id":
+            logger.info(f"Applying speciality_id filter with value: {value}")
             if isinstance(value, int):
                 value = [value]
             if not isinstance(value, list):
-                logger.warning(f"Invalid value for actual_specialty filter: {value}")
+                logger.warning(f"Invalid value for speciality_id filter: {value}")
                 continue
             base_query = base_query.where(
                 Publication.actual_specialties.any(

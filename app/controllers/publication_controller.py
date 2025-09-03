@@ -58,7 +58,7 @@ async def list_publications_paginated(
         db: AsyncSession = Depends(get_db1_session),
         page: int = Query(1, ge=1),
         per_page: int = Query(10, ge=1, le=100),
-        actual_specialty: Optional[List[int]] = Query(None),  # Явно обрабатываем actual_specialty
+        speciality_id: Optional[List[int]] = Query(None),  # Явно обрабатываем speciality_id
         el_id: Optional[int] = Query(None),
         vak_id: Optional[int] = Query(None),
         name: Optional[str] = Query(None),
@@ -89,7 +89,7 @@ async def list_publications_paginated(
             "languages": languages,
             "el_updated_at_from": el_updated_at_from,
             "el_updated_at_to": el_updated_at_to,
-            "actual_specialty": actual_specialty,
+            "speciality_id": speciality_id,
         }
         # Удаляем ключи с None значениями
         filter_dict = {k: v for k, v in filter_dict.items() if v is not None}
