@@ -379,7 +379,7 @@ async def get_paginated_publications_with_index_and_information(
                 field: getattr(pub.pub_information, field)
                 for field in PubInformationResponse.__fields__.keys()
             }
-            pub_information = PubInformationResponse(**pub_information_data)
+            pub_information = PubInformationResponse.model_validate(pub.pub_information) if pub.pub_information else None
         else:
             logger.info(f"No PubInformation for publication ID={pub.id}")
 
@@ -390,7 +390,7 @@ async def get_paginated_publications_with_index_and_information(
                 field: getattr(pub.index, field)
                 for field in IndexResponse.__fields__.keys()
             }
-            index = IndexResponse(**index_data)
+            index = IndexResponse.model_validate(pub.index) if pub.index else None
         else:
             logger.info(f"No Index for publication ID={pub.id}")
 
