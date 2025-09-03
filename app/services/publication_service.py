@@ -308,20 +308,20 @@ async def get_paginated_publications_with_index_and_information(
         "multidisc": MultidiscEnum,
     }
 
-    # Основной запрос с eager-loading
+    # --- базовый запрос ---
     base_query = select(Publication).options(
         selectinload(Publication.actual_oecd_items),
         selectinload(Publication.actual_grnti_items),
         selectinload(Publication.main_sections),
+        selectinload(Publication.actual_specialties),
         joinedload(Publication.pub_information),
         joinedload(Publication.index),
-        selectinload(Publication.actual_specialties)
     ).distinct()
 
-    # Запрос на количество
-    count_query = select(func.count(distinct(Publication.id))).select_from(Publication)
+    # --- подзапрос для count ---
+    count_subquery = select(Publication.id).distinct()
 
-    # Применение фильтров к обоим запросам
+    # --- применение фильтров ---
     for key, value in filters.items():
         if not value:
             continue
@@ -329,59 +329,57 @@ async def get_paginated_publications_with_index_and_information(
         if key == "languages":
             lang_conditions = [Publication.language.like(f"%{lang.value}%") for lang in value]
             base_query = base_query.where(or_(*lang_conditions))
-            count_query = count_query.where(or_(*lang_conditions))
+            count_subquery = count_subquery.where(or_(*lang_conditions))
+
         elif key == "name":
             base_query = base_query.where(Publication.name.ilike(f"%{value}%"))
-            count_query = count_query.where(Publication.name.ilike(f"%{value}%"))
+            count_subquery = count_subquery.where(Publication.name.ilike(f"%{value}%"))
+
         elif key == "el_updated_at_from":
             base_query = base_query.where(Publication.el_updated_at >= value)
-            count_query = count_query.where(Publication.el_updated_at >= value)
+            count_subquery = count_subquery.where(Publication.el_updated_at >= value)
+
         elif key == "el_updated_at_to":
             base_query = base_query.where(Publication.el_updated_at <= value)
-            count_query = count_query.where(Publication.el_updated_at <= value)
+            count_subquery = count_subquery.where(Publication.el_updated_at <= value)
+
         elif key in enum_fields:
             try:
                 enum_value = enum_fields[key](value)
                 base_query = base_query.where(getattr(Publication, key) == enum_value)
-                count_query = count_query.where(getattr(Publication, key) == enum_value)
+                count_subquery = count_subquery.where(getattr(Publication, key) == enum_value)
             except ValueError:
                 continue
-        elif key == "actual_specialty":
-            # Преобразуем значение в список чисел
-            specialty_ids = [int(id) for id in value]
 
-            # Применяем INNER JOIN и фильтр к обоим запросам
-            base_query = base_query.join(Publication.actual_specialties).filter(
-                ActualSpecialty.specialty_id.in_(specialty_ids)
-            )
-            count_query = count_query.join(Publication.actual_specialties).filter(
-                ActualSpecialty.specialty_id.in_(specialty_ids)
-            )
+        elif key == "actual_specialty":
+            if value:
+                # join для фильтра
+                base_query = base_query.join(Publication.actual_specialties).filter(
+                    ActualSpecialty.specialty_id.in_(value)
+                )
+                count_subquery = count_subquery.join(Publication.actual_specialties).filter(
+                    ActualSpecialty.specialty_id.in_(value)
+                )
+
         elif hasattr(Publication, key):
             base_query = base_query.where(getattr(Publication, key) == value)
-            count_query = count_query.where(getattr(Publication, key) == value)
+            count_subquery = count_subquery.where(getattr(Publication, key) == value)
+
+    # --- выполнение count через подзапрос ---
+    count_query = select(func.count()).select_from(count_subquery.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
 
     # --- пагинация ---
     offset = (page - 1) * per_page
     base_query = base_query.offset(offset).limit(per_page)
 
-    # --- выполнение count-запроса ---
-    logger.info(f"Executing count query: {count_query}")
-    total_result = await db.execute(count_query)
-    total = total_result.scalar_one()
-    logger.info(f"Total publications found: {total}")
-
     # --- выполнение основного запроса ---
-    logger.info(f"Executing main query: {base_query}")
     result = await db.execute(base_query)
     publications = result.unique().scalars().all()
-    logger.info(f"Fetched {len(publications)} publications (page {page})")
 
-    # Преобразование результатов в формат ответа
     publications_out = []
     for pub in publications:
-        logger.info(f"Processing publication ID={pub.id}, name={pub.name}")
-
         pub_information = PubInformationResponse.model_validate(pub.pub_information, from_attributes=True) if pub.pub_information else None
         index = IndexResponse.model_validate(pub.index, from_attributes=True) if pub.index else None
 
@@ -407,7 +405,5 @@ async def get_paginated_publications_with_index_and_information(
                 index=index
             )
         )
-
-    logger.info(f"Final response: {[pub.json() for pub in publications_out]}")
 
     return publications_out, total
