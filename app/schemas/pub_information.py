@@ -40,3 +40,6 @@ class PubInformationResponse(BaseModel):
     founding: Optional[str] = None
     release: Optional[str] = None
     el_archive: Optional[str] = None
+
+    class Config:
+        from_attributes = True

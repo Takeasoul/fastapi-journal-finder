@@ -105,3 +105,6 @@ class IndexResponse(BaseModel):
     vak_cat: Optional[str] = None
     crossref: Optional[str] = None
     doi: Optional[str] = None
+
+    class Config:
+        from_attributes = True
