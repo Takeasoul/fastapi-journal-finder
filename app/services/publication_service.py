@@ -346,14 +346,16 @@ async def get_paginated_publications_with_index_and_information(
                 continue
         elif key == "actual_specialty":
                 if value:  # проверяем, что список не пустой
-                    subq = exists().where(
-                        and_(
-                            ActualSpecialty.pub_id == Publication.id,
-                            ActualSpecialty.specialty_id.in_(value)
-                        )
+                    # join к ActualSpecialty
+                    query = query.join(Publication.actual_specialties).filter(
+                        ActualSpecialty.specialty_id.in_(value)
                     )
-                    query = query.where(subq)
-                    count_query = count_query.where(subq)
+
+                    # для count_query считаем уникальные публикации
+                    count_subq = select(Publication.id).join(Publication.actual_specialties).filter(
+                        ActualSpecialty.specialty_id.in_(value)
+                    ).distinct()
+                    count_query = select(func.count()).select_from(count_subq.alias("subq"))
         elif hasattr(Publication, key):
             query = query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
