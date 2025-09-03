@@ -288,11 +288,6 @@ async def get_paginated_publication_actual_specialty(
     return items, total
 
 
-from sqlalchemy import select, func
-from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import exists
-from sqlalchemy.ext.asyncio import AsyncSession
-
 async def get_paginated_publications_with_index_and_information(
     db: AsyncSession,
     page: int,
@@ -382,6 +377,6 @@ async def get_paginated_publications_with_index_and_information(
             "pub_information": PubInformationResponse.model_validate(pub.pub_information.__dict__) if pub.pub_information else None,
             "index": IndexResponse.model_validate(pub.index.__dict__) if pub.index else None,
         }
-        publications_out.append(PublicationFilterWithSpec.model_validate(pub_dict))
+        publications_out.append(PublicationFilterWith.model_validate(pub_dict))
 
     return publications_out, total
