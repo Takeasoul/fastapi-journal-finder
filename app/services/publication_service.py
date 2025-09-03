@@ -304,6 +304,9 @@ async def get_paginated_publications_with_index_and_information(
     per_page: int,
     filters: dict
 ) -> Tuple[List[PublicationResponseWith], int]:
+    if page < 1 or per_page < 1:
+        logger.error(f"Invalid pagination parameters: page={page}, per_page={per_page}")
+        raise ValueError("Page and per_page must be positive integers")
 
     enum_fields = {
         "serial_type": SerialTypeEnum11,
@@ -314,6 +317,8 @@ async def get_paginated_publications_with_index_and_information(
         "main_finance": MainFinanceEnum,
         "multidisc": MultidiscEnum,
     }
+
+    logger.info(f"Applying filters: {filters}")
 
     # --- базовый запрос ---
     base_query = select(Publication).options(
@@ -331,7 +336,10 @@ async def get_paginated_publications_with_index_and_information(
     # --- применение фильтров ---
     for key, value in filters.items():
         if not value:
+            logger.debug(f"Skipping empty filter: {key}")
             continue
+
+        logger.debug(f"Applying filter: {key} = {value}")
 
         if key == "languages":
             lang_conditions = [Publication.language.like(f"%{lang.value}%") for lang in value]
@@ -356,9 +364,16 @@ async def get_paginated_publications_with_index_and_information(
                 base_query = base_query.where(getattr(Publication, key) == enum_value)
                 count_subquery = count_subquery.where(getattr(Publication, key) == enum_value)
             except ValueError:
+                logger.warning(f"Invalid enum value for {key}: {value}")
                 continue
 
-        elif key == "actual_specialty" and value:
+        elif key == "actual_specialty":
+            logger.info(f"Applying actual_specialty filter with value: {value}")
+            if isinstance(value, int):
+                value = [value]
+            if not isinstance(value, list):
+                logger.warning(f"Invalid value for actual_specialty filter: {value}")
+                continue
             base_query = base_query.where(
                 Publication.actual_specialties.any(
                     ActualSpecialty.specialty_id.in_(value)
@@ -373,12 +388,12 @@ async def get_paginated_publications_with_index_and_information(
         elif hasattr(Publication, key):
             base_query = base_query.where(getattr(Publication, key) == value)
             count_subquery = count_subquery.where(getattr(Publication, key) == value)
+        else:
+            logger.warning(f"Unknown filter key: {key}")
 
     # --- выполнение count через подзапрос ---
     count_query = select(func.count()).select_from(count_subquery.subquery())
-
-    # --- лог запроса count ---
-    logger.info(f"Count query: {count_query}")
+    logger.info(f"Count query SQL: {str(count_query.compile(compile_kwargs={'literal_binds': True}))}")
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
     logger.info(f"Total publications found with filters {filters}: {total}")
@@ -386,9 +401,7 @@ async def get_paginated_publications_with_index_and_information(
     # --- пагинация ---
     offset = (page - 1) * per_page
     base_query = base_query.offset(offset).limit(per_page)
-
-    # --- лог запроса основного ---
-    logger.info(f"Base query (paginated): {base_query}")
+    logger.info(f"Base query SQL (paginated): {str(base_query.compile(compile_kwargs={'literal_binds': True}))}")
 
     # --- выполнение основного запроса ---
     result = await db.execute(base_query)
@@ -421,6 +434,7 @@ async def get_paginated_publications_with_index_and_information(
                 index=index
             )
         )
+
     logger.info(
         f"Returning {len(publications_out)} publications (page {page}/{ceil(total / per_page)}) "
         f"out of total {total} matching filters: {filters}"

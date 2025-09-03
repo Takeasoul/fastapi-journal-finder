@@ -1,13 +1,15 @@
 import json
+from datetime import date
 from math import ceil
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, Path, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
 from app.core.security import require_role, logger
 from app.schemas.publication import PublicationOut, PublicationCreate, PublicationUpdate, PaginatedResponse, \
-    PublicationFilter, PublicationResponse, PublicationFilterWithSpec, PaginatedResponseWith
+    PublicationFilter, PublicationResponse, PublicationFilterWithSpec, PaginatedResponseWith, SerialTypeEnum11, \
+    SerialElemEnum, PurposeEnum, DistributionEnum, AccessEnum, MainFinanceEnum, MultidiscEnum, LanguageEnum
 from app.schemas.publication_actual_specialty import PublicationActualSpecialtyOut, PublicationActualSpecialtyFilter, \
     PublicationActualSpecialtyResponse
 from app.schemas.publication_base_info import PublicationBaseInfoOut, PaginatedBaseInfoResponse, \
@@ -53,14 +55,50 @@ async def list_publications_paginated(
     description="Получает список всех публикаций с поддержкой пагинации и фильтрации. - **page**: Номер страницы (начинается с 1). - **per_page**: Количество элементов на странице (максимум 100). - **filters**: Фильтры для поиска публикаций (например, язык, автор, дата). ВАЖНО: из-за бага Swagger параметр languages нужно передавать через query (?languages=русский&languages=английский), а не через body, даже если Swagger предлагает body."
 )
 async def list_publications_paginated(
-    db: AsyncSession = Depends(get_db1_session),
-    page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
-    filters: PublicationFilterWithSpec = Depends()
+        db: AsyncSession = Depends(get_db1_session),
+        page: int = Query(1, ge=1),
+        per_page: int = Query(10, ge=1, le=100),
+        actual_specialty: Optional[List[int]] = Query(None),  # Явно обрабатываем actual_specialty
+        el_id: Optional[int] = Query(None),
+        vak_id: Optional[int] = Query(None),
+        name: Optional[str] = Query(None),
+        serial_type: Optional[SerialTypeEnum11] = Query(None),
+        serial_elem: Optional[SerialElemEnum] = Query(None),
+        purpose: Optional[PurposeEnum] = Query(None),
+        distribution: Optional[DistributionEnum] = Query(None),
+        access: Optional[AccessEnum] = Query(None),
+        main_finance: Optional[MainFinanceEnum] = Query(None),
+        multidisc: Optional[MultidiscEnum] = Query(None),
+        languages: Optional[List[LanguageEnum]] = Query(None),  # Изменено на List вместо Set
+        el_updated_at_from: Optional[date] = Query(None),
+        el_updated_at_to: Optional[date] = Query(None),
 ):
     try:
-        filter_dict = filters.model_dump(exclude_none=True)
-        publications, total = await publication_service.get_paginated_publications_with_index_and_information(db, page, per_page, filter_dict)
+        # Формируем словарь фильтров вручную
+        filter_dict = {
+            "el_id": el_id,
+            "vak_id": vak_id,
+            "name": name,
+            "serial_type": serial_type,
+            "serial_elem": serial_elem,
+            "purpose": purpose,
+            "distribution": distribution,
+            "access": access,
+            "main_finance": main_finance,
+            "multidisc": multidisc,
+            "languages": languages,
+            "el_updated_at_from": el_updated_at_from,
+            "el_updated_at_to": el_updated_at_to,
+            "actual_specialty": actual_specialty,
+        }
+        # Удаляем ключи с None значениями
+        filter_dict = {k: v for k, v in filter_dict.items() if v is not None}
+
+        logger.info(f"Received query parameters: {filter_dict}")
+
+        publications, total = await publication_service.get_paginated_publications_with_index_and_information(
+            db, page, per_page, filter_dict
+        )
         total_pages = ceil(total / per_page)
         return PaginatedResponseWith(
             items=publications,
