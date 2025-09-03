@@ -291,6 +291,8 @@ async def get_paginated_publication_actual_specialty(
 logger = logging.getLogger("publications")
 logger.setLevel(logging.INFO)
 
+
+
 async def get_paginated_publications_with_index_and_information(
     db: AsyncSession,
     page: int,
@@ -320,6 +322,9 @@ async def get_paginated_publications_with_index_and_information(
 
     # --- подзапрос для count ---
     count_subquery = select(Publication.id).distinct()
+
+    # --- join-флаги, чтобы не дублировать join ---
+    join_actual_specialty = False
 
     # --- применение фильтров ---
     for key, value in filters.items():
@@ -351,14 +356,30 @@ async def get_paginated_publications_with_index_and_information(
             except ValueError:
                 continue
 
+
         elif key == "actual_specialty":
+
             if value:
-                # join для фильтра
-                base_query = base_query.join(Publication.actual_specialties).filter(
-                    ActualSpecialty.specialty_id.in_(value)
+                # filter через exists(), чтобы не дублировать строки
+
+                base_query = base_query.where(
+
+                    Publication.actual_specialties.any(
+
+                        ActualSpecialty.specialty_id.in_(value)
+
+                    )
+
                 )
-                count_subquery = count_subquery.join(Publication.actual_specialties).filter(
-                    ActualSpecialty.specialty_id.in_(value)
+
+                count_subquery = count_subquery.where(
+
+                    Publication.actual_specialties.any(
+
+                        ActualSpecialty.specialty_id.in_(value)
+
+                    )
+
                 )
 
         elif hasattr(Publication, key):
