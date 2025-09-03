@@ -312,8 +312,8 @@ async def get_paginated_publications_with_index_and_information(
         selectinload(Publication.actual_oecd_items),
         selectinload(Publication.actual_grnti_items),
         selectinload(Publication.main_sections),
-        joinedload(Publication.pub_information),
-        joinedload(Publication.index),
+        joinedload(Publication.pub_information),  # уже правильно
+        joinedload(Publication.index),  # вместо selectinload
         selectinload(Publication.actual_specialties)
     )
 
