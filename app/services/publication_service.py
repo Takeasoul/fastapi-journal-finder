@@ -346,15 +346,12 @@ async def get_paginated_publications_with_index_and_information(
                 continue
         elif key == "actual_specialty":
                 if value:
-                    # join для main query
                     query = query.join(Publication.actual_specialties).filter(
                         ActualSpecialty.specialty_id.in_(value)
                     )
-
-                    # join для count query
-                    count_query = select(func.count()).select_from(
-                        Publication.__table__.join(ActualSpecialty.__table__)
-                    ).where(ActualSpecialty.specialty_id.in_(value))
+                    count_query = count_query.join(Publication.actual_specialties).filter(
+                        ActualSpecialty.specialty_id.in_(value)
+                    )
         elif hasattr(Publication, key):
             query = query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
