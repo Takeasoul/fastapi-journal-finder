@@ -17,7 +17,8 @@ from app.schemas.actual_oecd import ActualOECDBase, ActualOECDResponse
 from app.schemas.index import IndexResponse
 from app.schemas.main_section import MainSectionBase, MainSectionResponse
 from app.schemas.pub_information import PubInformationResponse
-from app.schemas.publication import PublicationCreate, PublicationUpdate, PublicationOut, PublicationResponse
+from app.schemas.publication import PublicationCreate, PublicationUpdate, PublicationOut, PublicationResponse, \
+    PublicationFilterWithSpec
 from app.models.publication import (
     Publication,
     SerialTypeEnum11,
