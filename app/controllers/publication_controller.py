@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
 from app.core.security import require_role, logger
 from app.schemas.publication import PublicationOut, PublicationCreate, PublicationUpdate, PaginatedResponse, \
-    PublicationFilter, PublicationResponse, PublicationFilterWithSpec
+    PublicationFilter, PublicationResponse, PublicationFilterWithSpec, PaginatedResponseWith
 from app.schemas.publication_actual_specialty import PublicationActualSpecialtyOut, PublicationActualSpecialtyFilter, \
     PublicationActualSpecialtyResponse
 from app.schemas.publication_base_info import PublicationBaseInfoOut, PaginatedBaseInfoResponse, \
@@ -62,7 +62,7 @@ async def list_publications_paginated(
         filter_dict = filters.model_dump(exclude_none=True)
         publications, total = await publication_service.get_paginated_publications_with_index_and_information(db, page, per_page, filter_dict)
         total_pages = ceil(total / per_page)
-        return PaginatedResponse(
+        return PaginatedResponseWith(
             items=publications,
             total=total,
             page=page,

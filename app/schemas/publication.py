@@ -165,6 +165,13 @@ class PaginatedResponse(BaseModel):
     per_page: int
     total_pages: int
 
+class PaginatedResponseWith(BaseModel):
+    items: List[PublicationResponseWith]
+    total: int
+    page: int
+    per_page: int
+    total_pages: int
+
 class PublicationFilter(BaseModel):
     el_id: Optional[int] = None
     vak_id: Optional[int] = None
