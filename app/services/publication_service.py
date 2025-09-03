@@ -308,16 +308,17 @@ async def get_paginated_publications_with_index_and_information(
         "multidisc": MultidiscEnum,
     }
 
-    query = select(Publication).options(
+    # Основной запрос с eager-loading
+    base_query = select(Publication).options(
         selectinload(Publication.actual_oecd_items),
         selectinload(Publication.actual_grnti_items),
         selectinload(Publication.main_sections),
-        joinedload(Publication.pub_information),  # уже правильно
-        joinedload(Publication.index),  # вместо selectinload
+        joinedload(Publication.pub_information),
+        joinedload(Publication.index),
         selectinload(Publication.actual_specialties)
-    )
+    ).distinct()
 
-    base_query = select(Publication).distinct()  # distinct нужен для join с actual_specialty
+    # Запрос на количество
     count_query = select(func.count(distinct(Publication.id)))
 
     # --- фильтры ---
@@ -329,19 +330,15 @@ async def get_paginated_publications_with_index_and_information(
             lang_conditions = [Publication.language.like(f"%{lang.value}%") for lang in value]
             base_query = base_query.where(or_(*lang_conditions))
             count_query = count_query.where(or_(*lang_conditions))
-
         elif key == "name":
             base_query = base_query.where(Publication.name.ilike(f"%{value}%"))
             count_query = count_query.where(Publication.name.ilike(f"%{value}%"))
-
         elif key == "el_updated_at_from":
             base_query = base_query.where(Publication.el_updated_at >= value)
             count_query = count_query.where(Publication.el_updated_at >= value)
-
         elif key == "el_updated_at_to":
             base_query = base_query.where(Publication.el_updated_at <= value)
             count_query = count_query.where(Publication.el_updated_at <= value)
-
         elif key in enum_fields:
             try:
                 enum_value = enum_fields[key](value)
@@ -349,7 +346,6 @@ async def get_paginated_publications_with_index_and_information(
                 count_query = count_query.where(getattr(Publication, key) == enum_value)
             except ValueError:
                 continue
-
         elif key == "actual_specialty":
             if value:
                 base_query = base_query.join(Publication.actual_specialties).filter(
@@ -358,7 +354,6 @@ async def get_paginated_publications_with_index_and_information(
                 count_query = count_query.join(Publication.actual_specialties).filter(
                     ActualSpecialty.specialty_id.in_(value)
                 )
-
         elif hasattr(Publication, key):
             base_query = base_query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
@@ -367,11 +362,13 @@ async def get_paginated_publications_with_index_and_information(
     offset = (page - 1) * per_page
     base_query = base_query.offset(offset).limit(per_page)
 
+    # --- выполнение count-запроса ---
     logger.info(f"Executing count query: {count_query}")
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
     logger.info(f"Total publications found: {total}")
 
+    # --- выполнение основного запроса ---
     logger.info(f"Executing main query: {base_query}")
     result = await db.execute(base_query)
     publications = result.unique().scalars().all()
@@ -381,27 +378,8 @@ async def get_paginated_publications_with_index_and_information(
     for pub in publications:
         logger.info(f"Processing publication ID={pub.id}, name={pub.name}")
 
-        pub_information = None
-        if pub.pub_information:
-            pub_information_data = {
-                field: getattr(pub.pub_information, field)
-                for field in PubInformationResponse.__fields__.keys()
-            }
-            pub_information = PubInformationResponse(**pub_information_data)
-            logger.info(f"PubInformationResponse: {pub_information.json()}")
-        else:
-            logger.info("No PubInformation for this publication")
-
-        index = None
-        if pub.index:
-            index_data = {
-                field: getattr(pub.index, field)
-                for field in IndexResponse.__fields__.keys()
-            }
-            index = IndexResponse(**index_data)
-            logger.info(f"IndexResponse: {index.json()}")
-        else:
-            logger.info("No Index for this publication")
+        pub_information = PubInformationResponse.model_validate(pub.pub_information, from_attributes=True) if pub.pub_information else None
+        index = IndexResponse.model_validate(pub.index, from_attributes=True) if pub.index else None
 
         publications_out.append(
             PublicationResponseWith(
@@ -418,18 +396,14 @@ async def get_paginated_publications_with_index_and_information(
                 multidisc=pub.multidisc,
                 language=list(pub.language) if pub.language else [],
                 el_updated_at=pub.el_updated_at,
-                actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in
-                                   pub.actual_oecd_items],
-                actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in
-                                    pub.actual_grnti_items],
-                main_sections=[MainSectionResponse.model_validate(item, from_attributes=True) for item in
-                               pub.main_sections],
+                actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in pub.actual_oecd_items],
+                actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in pub.actual_grnti_items],
+                main_sections=[MainSectionResponse.model_validate(item, from_attributes=True) for item in pub.main_sections],
                 pub_information=pub_information,
                 index=index
             )
         )
 
-    # Выводим весь сформированный response перед возвратом
     logger.info(f"Final response: {[pub.json() for pub in publications_out]}")
 
     return publications_out, total
