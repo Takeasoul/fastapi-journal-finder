@@ -288,6 +288,9 @@ async def get_paginated_publication_actual_specialty(
     return items, total
 
 
+logger = logging.getLogger("publications")
+logger.setLevel(logging.INFO)
+
 async def get_paginated_publications_with_index_and_information(
     db: AsyncSession,
     page: int,
@@ -309,8 +312,8 @@ async def get_paginated_publications_with_index_and_information(
         selectinload(Publication.actual_oecd_items),
         selectinload(Publication.actual_grnti_items),
         selectinload(Publication.main_sections),
-        selectinload(Publication.pub_information),
-        selectinload(Publication.index),
+        joinedload(Publication.pub_information),
+        joinedload(Publication.index),
         selectinload(Publication.actual_specialties)
     )
 
@@ -325,19 +328,15 @@ async def get_paginated_publications_with_index_and_information(
             lang_conditions = [Publication.language.like(f"%{lang.value}%") for lang in value]
             query = query.where(or_(*lang_conditions))
             count_query = count_query.where(or_(*lang_conditions))
-
         elif key == "name":
             query = query.where(Publication.name.ilike(f"%{value}%"))
             count_query = count_query.where(Publication.name.ilike(f"%{value}%"))
-
         elif key == "el_updated_at_from":
             query = query.where(Publication.el_updated_at >= value)
             count_query = count_query.where(Publication.el_updated_at >= value)
-
         elif key == "el_updated_at_to":
             query = query.where(Publication.el_updated_at <= value)
             count_query = count_query.where(Publication.el_updated_at <= value)
-
         elif key in enum_fields:
             try:
                 enum_value = enum_fields[key](value)
@@ -345,7 +344,6 @@ async def get_paginated_publications_with_index_and_information(
                 count_query = count_query.where(getattr(Publication, key) == enum_value)
             except ValueError:
                 continue
-
         elif key == "actual_specialty":
             subq = exists().where(
                 (ActualSpecialty.pub_id == Publication.id) &
@@ -353,7 +351,6 @@ async def get_paginated_publications_with_index_and_information(
             )
             query = query.where(subq)
             count_query = count_query.where(subq)
-
         elif hasattr(Publication, key):
             query = query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
@@ -362,33 +359,40 @@ async def get_paginated_publications_with_index_and_information(
     offset = (page - 1) * per_page
     query = query.offset(offset).limit(per_page)
 
-    # --- выполнение запросов ---
+    logger.info(f"Executing count query: {count_query}")
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
+    logger.info(f"Total publications found: {total}")
 
+    logger.info(f"Executing main query: {query}")
     result = await db.execute(query)
     publications = result.unique().scalars().all()
+    logger.info(f"Fetched {len(publications)} publications (page {page})")
 
-    # --- подготовка ответа ---
     publications_out = []
     for pub in publications:
-        # безопасная сериализация PubInformation
+        logger.info(f"Processing publication ID={pub.id}, name={pub.name}")
         pub_information = None
         if pub.pub_information:
+            logger.info(f"PubInformation found for publication ID={pub.id}")
             pub_information_data = {
                 field: getattr(pub.pub_information, field)
                 for field in PubInformationResponse.__fields__.keys()
             }
             pub_information = PubInformationResponse(**pub_information_data)
+        else:
+            logger.info(f"No PubInformation for publication ID={pub.id}")
 
-        # безопасная сериализация Index
         index = None
         if pub.index:
+            logger.info(f"Index found for publication ID={pub.id}")
             index_data = {
                 field: getattr(pub.index, field)
                 for field in IndexResponse.__fields__.keys()
             }
             index = IndexResponse(**index_data)
+        else:
+            logger.info(f"No Index for publication ID={pub.id}")
 
         publications_out.append(
             PublicationResponseWith(
