@@ -1,5 +1,6 @@
 from enum import Enum
 
+from fastapi import Query
 from pydantic import BaseModel
 from typing import Optional, Set, List
 from datetime import date
@@ -201,4 +202,4 @@ class PublicationFilterWithSpec(BaseModel):
     languages: Optional[Set[LanguageEnum]] = None
     el_updated_at_from: Optional[date] = None
     el_updated_at_to: Optional[date] = None
-    actual_specialty: Optional[List[int]] = None
+    actual_specialty: Optional[List[int]] = Query(None, alias="actual_specialty")
