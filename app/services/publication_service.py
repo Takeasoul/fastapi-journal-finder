@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List
 
 from fastapi import HTTPException
 from pydantic import ValidationError
-from sqlalchemy import func, text, Enum
+from sqlalchemy import func, text, Enum, exists, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload, selectinload
@@ -293,7 +293,8 @@ async def get_paginated_publications_with_index_and_information(
     page: int,
     per_page: int,
     filters: dict
-) -> Tuple[List[PublicationResponse], int]:
+) -> Tuple[List[PublicationResponseWith], int]:
+
     enum_fields = {
         "serial_type": SerialTypeEnum11,
         "serial_elem": SerialElemEnum,
@@ -305,71 +306,73 @@ async def get_paginated_publications_with_index_and_information(
     }
 
     query = select(Publication).options(
-        selectinload(Publication.actual_oecd_items),
-        selectinload(Publication.actual_grnti_items),
-        selectinload(Publication.main_sections),
-        selectinload(Publication.pub_information),
-        selectinload(Publication.index),
-        selectinload(Publication.actual_specialties)  # загрузка связанной таблицы
+        joinedload(Publication.actual_oecd_items),
+        joinedload(Publication.actual_grnti_items),
+        joinedload(Publication.main_sections),
+        joinedload(Publication.pub_information),
+        joinedload(Publication.index),
+        joinedload(Publication.actual_specialties)
     )
 
     count_query = select(func.count()).select_from(Publication)
 
     # --- фильтры ---
-    if "languages" in filters and filters["languages"]:
-        for lang in filters["languages"]:
-            query = query.where(Publication.language.like(f"%{lang.value}%"))
-            count_query = count_query.where(Publication.language.like(f"%{lang.value}%"))
-
     for key, value in filters.items():
-        if key == "languages":
+        if not value:
             continue
-        if key == "name" and value:
+
+        if key == "languages":
+            lang_conditions = [Publication.language.like(f"%{lang.value}%") for lang in value]
+            query = query.where(or_(*lang_conditions))
+            count_query = count_query.where(or_(*lang_conditions))
+
+        elif key == "name":
             query = query.where(Publication.name.ilike(f"%{value}%"))
             count_query = count_query.where(Publication.name.ilike(f"%{value}%"))
-        elif key == "el_updated_at_from" and value:
+
+        elif key == "el_updated_at_from":
             query = query.where(Publication.el_updated_at >= value)
             count_query = count_query.where(Publication.el_updated_at >= value)
-        elif key == "el_updated_at_to" and value:
+
+        elif key == "el_updated_at_to":
             query = query.where(Publication.el_updated_at <= value)
             count_query = count_query.where(Publication.el_updated_at <= value)
-        elif key in enum_fields and value is not None:
+
+        elif key in enum_fields:
             try:
                 enum_value = enum_fields[key](value)
+                query = query.where(getattr(Publication, key) == enum_value)
+                count_query = count_query.where(getattr(Publication, key) == enum_value)
             except ValueError:
                 continue
-            query = query.where(getattr(Publication, key) == enum_value)
-            count_query = count_query.where(getattr(Publication, key) == enum_value)
-        elif key == "actual_specialty" and value:
+
+        elif key == "actual_specialty":
             # value — список ID специальностей
-            query = query.where(
-                exists().where(
-                    (ActualSpecialty.pub_id == Publication.id) &
-                    (ActualSpecialty.specialty_id.in_(value))
-                )
+            subq = exists().where(
+                (ActualSpecialty.pub_id == Publication.id) &
+                (ActualSpecialty.specialty_id.in_(value))
             )
-            count_query = count_query.where(
-                exists().where(
-                    (ActualSpecialty.pub_id == Publication.id) &
-                    (ActualSpecialty.specialty_id.in_(value))
-                )
-            )
-        elif hasattr(Publication, key) and value is not None:
+            query = query.where(subq)
+            count_query = count_query.where(subq)
+
+        elif hasattr(Publication, key):
             query = query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
 
+    # --- пагинация ---
     offset = (page - 1) * per_page
     query = query.offset(offset).limit(per_page)
 
+    # --- выполнение запросов ---
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
 
     result = await db.execute(query)
-    publications = result.unique().scalars().all()
+    publications = result.scalars().all()  # unique() не нужен с joinedload
 
-    publications_out = []
-    for pub in publications:
-        pub_out = PublicationResponseWith(
+    # --- подготовка ответа ---
+    publications_out = [
+        PublicationResponseWith(
             id=pub.id,
             el_id=pub.el_id,
             vak_id=pub.vak_id,
@@ -381,25 +384,15 @@ async def get_paginated_publications_with_index_and_information(
             access=pub.access,
             main_finance=pub.main_finance,
             multidisc=pub.multidisc,
-            language=list(pub.language) if pub.language else [],
+            language=pub.language.split(",") if pub.language else [],
             el_updated_at=pub.el_updated_at,
-            actual_oecd_items=[
-                ActualOECDResponse.model_validate(item, from_attributes=True)
-                for item in pub.actual_oecd_items
-            ],
-            actual_grnti_items=[
-                ActualGRNTIResponse.model_validate(item, from_attributes=True)
-                for item in pub.actual_grnti_items
-            ],
-            main_sections=[
-                MainSectionResponse.model_validate(item, from_attributes=True)
-                for item in pub.main_sections
-            ],
-            pub_information=PubInformationResponse.model_validate(pub.pub_information, from_attributes=True)
-            if pub.pub_information else None,
-            index=IndexResponse.model_validate(pub.index, from_attributes=True)
-            if pub.index else None
+            actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in pub.actual_oecd_items],
+            actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in pub.actual_grnti_items],
+            main_sections=[MainSectionResponse.model_validate(item, from_attributes=True) for item in pub.main_sections],
+            pub_information=PubInformationResponse.model_validate(pub.pub_information, from_attributes=True) if pub.pub_information else None,
+            index=IndexResponse.model_validate(pub.index, from_attributes=True) if pub.index else None
         )
-        publications_out.append(pub_out)
+        for pub in publications
+    ]
 
     return publications_out, total
