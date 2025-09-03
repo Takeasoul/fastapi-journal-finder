@@ -416,5 +416,8 @@ async def get_paginated_publications_with_index_and_information(
                 index=index
             )
         )
-
+    logger.info(
+        f"Returning {len(publications_out)} publications (page {page}/{ceil(total / per_page)}) "
+        f"out of total {total} matching filters: {filters}"
+    )
     return publications_out, total
