@@ -372,27 +372,28 @@ async def get_paginated_publications_with_index_and_information(
     publications_out = []
     for pub in publications:
         logger.info(f"Processing publication ID={pub.id}, name={pub.name}")
+
         pub_information = None
         if pub.pub_information:
-            logger.info(f"PubInformation found for publication ID={pub.id}")
             pub_information_data = {
                 field: getattr(pub.pub_information, field)
                 for field in PubInformationResponse.__fields__.keys()
             }
-            pub_information = PubInformationResponse.model_validate(pub.pub_information) if pub.pub_information else None
+            pub_information = PubInformationResponse(**pub_information_data)
+            logger.info(f"PubInformationResponse: {pub_information.json()}")
         else:
-            logger.info(f"No PubInformation for publication ID={pub.id}")
+            logger.info("No PubInformation for this publication")
 
         index = None
         if pub.index:
-            logger.info(f"Index found for publication ID={pub.id}")
             index_data = {
                 field: getattr(pub.index, field)
                 for field in IndexResponse.__fields__.keys()
             }
-            index = IndexResponse.model_validate(pub.index) if pub.index else None
+            index = IndexResponse(**index_data)
+            logger.info(f"IndexResponse: {index.json()}")
         else:
-            logger.info(f"No Index for publication ID={pub.id}")
+            logger.info("No Index for this publication")
 
         publications_out.append(
             PublicationResponseWith(
@@ -409,12 +410,18 @@ async def get_paginated_publications_with_index_and_information(
                 multidisc=pub.multidisc,
                 language=list(pub.language) if pub.language else [],
                 el_updated_at=pub.el_updated_at,
-                actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in pub.actual_oecd_items],
-                actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in pub.actual_grnti_items],
-                main_sections=[MainSectionResponse.model_validate(item, from_attributes=True) for item in pub.main_sections],
+                actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in
+                                   pub.actual_oecd_items],
+                actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in
+                                    pub.actual_grnti_items],
+                main_sections=[MainSectionResponse.model_validate(item, from_attributes=True) for item in
+                               pub.main_sections],
                 pub_information=pub_information,
                 index=index
             )
         )
+
+    # Выводим весь сформированный response перед возвратом
+    logger.info(f"Final response: {[pub.json() for pub in publications_out]}")
 
     return publications_out, total
