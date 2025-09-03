@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db1_session
 from app.core.security import require_role, logger
 from app.schemas.publication import PublicationOut, PublicationCreate, PublicationUpdate, PaginatedResponse, \
-    PublicationFilter, PublicationResponse
+    PublicationFilter, PublicationResponse, PublicationFilterWithSpec
 from app.schemas.publication_actual_specialty import PublicationActualSpecialtyOut, PublicationActualSpecialtyFilter, \
     PublicationActualSpecialtyResponse
 from app.schemas.publication_base_info import PublicationBaseInfoOut, PaginatedBaseInfoResponse, \
@@ -31,6 +31,36 @@ async def list_publications_paginated(
     try:
         filter_dict = filters.model_dump(exclude_none=True)
         publications, total = await publication_service.get_paginated_publications(db, page, per_page, filter_dict)
+        total_pages = ceil(total / per_page)
+        return PaginatedResponse(
+            items=publications,
+            total=total,
+            page=page,
+            per_page=per_page,
+            total_pages=total_pages
+        )
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Unexpected error in list_publications_paginated: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.get(
+    "/with_index_and_information",
+    response_model=PaginatedResponse,
+    dependencies=[Depends(require_role("user"))],
+    description="Получает список всех публикаций с поддержкой пагинации и фильтрации. - **page**: Номер страницы (начинается с 1). - **per_page**: Количество элементов на странице (максимум 100). - **filters**: Фильтры для поиска публикаций (например, язык, автор, дата). ВАЖНО: из-за бага Swagger параметр languages нужно передавать через query (?languages=русский&languages=английский), а не через body, даже если Swagger предлагает body."
+)
+async def list_publications_paginated(
+    db: AsyncSession = Depends(get_db1_session),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    filters: PublicationFilterWithSpec = Depends()
+):
+    try:
+        filter_dict = filters.model_dump(exclude_none=True)
+        publications, total = await publication_service.get_paginated_publications_with_index_and_information(db, page, per_page, filter_dict)
         total_pages = ceil(total / per_page)
         return PaginatedResponse(
             items=publications,

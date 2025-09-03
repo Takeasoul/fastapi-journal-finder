@@ -6,7 +6,9 @@ from datetime import date
 
 from app.schemas.actual_grnti import ActualGRNTIBase, ActualGRNTIResponse
 from app.schemas.actual_oecd import ActualOECDBase, ActualOECDResponse
+from app.schemas.index import IndexResponse
 from app.schemas.main_section import MainSectionBase, MainSectionResponse
+from app.schemas.pub_information import PubInformationResponse
 
 
 class SerialTypeEnum11(str, Enum):
@@ -131,6 +133,31 @@ class PublicationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class PublicationResponseWith(BaseModel):
+    id: int
+    el_id: Optional[int] = None
+    vak_id: Optional[int] = None
+    name: Optional[str] = None
+    serial_type: Optional[str] = None
+    serial_elem: Optional[str] = None
+    purpose: Optional[str] = None
+    distribution: Optional[str] = None
+    access: Optional[str] = None
+    main_finance: Optional[str] = None
+    multidisc: Optional[str] = None
+    language: Optional[List[str]] = None
+    el_updated_at: Optional[date] = None
+
+    actual_oecd_items: Optional[List] = []
+    actual_grnti_items: Optional[List] = []
+    main_sections: Optional[List] = []
+
+    pub_information: Optional[PubInformationResponse] = None
+    index: Optional[IndexResponse] = None
+
+    class Config:
+        from_attributes = True
+
 class PaginatedResponse(BaseModel):
     items: List[PublicationResponse]
     total: int
@@ -153,4 +180,18 @@ class PublicationFilter(BaseModel):
     el_updated_at_from: Optional[date] = None
     el_updated_at_to: Optional[date] = None
 
-
+class PublicationFilterWithSpec(BaseModel):
+    el_id: Optional[int] = None
+    vak_id: Optional[int] = None
+    name: Optional[str] = None
+    serial_type: Optional[SerialTypeEnum11] = None
+    serial_elem: Optional[SerialElemEnum] = None
+    purpose: Optional[PurposeEnum] = None
+    distribution: Optional[DistributionEnum] = None
+    access: Optional[AccessEnum] = None
+    main_finance: Optional[MainFinanceEnum] = None
+    multidisc: Optional[MultidiscEnum] = None
+    languages: Optional[Set[LanguageEnum]] = None
+    el_updated_at_from: Optional[date] = None
+    el_updated_at_to: Optional[date] = None
+    actual_specialty: Optional[List[int]] = None

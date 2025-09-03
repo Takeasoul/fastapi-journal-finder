@@ -88,3 +88,20 @@ class IndexUpdate(IndexBase):
 class IndexOut(IndexBase):
     class Config:
         from_attributes = True
+
+
+class IndexResponse(BaseModel):
+    rinc: str
+    rinc_core: str
+    rsci: str
+    doaj: str
+    wos: str
+    wos_quart: str
+    scop: str
+    scop_quart: str
+    white: str
+    wite_level: str
+    vak: str
+    vak_cat: str
+    crossref: str
+    doi: Optional[str] = None

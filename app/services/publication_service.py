@@ -9,12 +9,14 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.core.security import logger
-from app.models import PublicationActualSpecialty
+from app.models import PublicationActualSpecialty, ActualSpecialty
 from app.models.publication import Publication
 from app.models.publication_base_info import PublicationBaseInfo
 from app.schemas.actual_grnti import ActualGRNTIBase, ActualGRNTIResponse
 from app.schemas.actual_oecd import ActualOECDBase, ActualOECDResponse
+from app.schemas.index import IndexResponse
 from app.schemas.main_section import MainSectionBase, MainSectionResponse
+from app.schemas.pub_information import PubInformationResponse
 from app.schemas.publication import PublicationCreate, PublicationUpdate, PublicationOut, PublicationResponse
 from app.models.publication import (
     Publication,
@@ -283,3 +285,102 @@ async def get_paginated_publication_actual_specialty(
     total = total_result.scalar_one()
 
     return items, total
+
+
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
+from sqlalchemy.sql import exists
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def get_paginated_publications_with_index_and_information(
+    db: AsyncSession,
+    page: int,
+    per_page: int,
+    filters: dict
+) -> Tuple[List[PublicationResponse], int]:
+    enum_fields = {
+        "serial_type": SerialTypeEnum11,
+        "serial_elem": SerialElemEnum,
+        "purpose": PurposeEnum,
+        "distribution": DistributionEnum,
+        "access": AccessEnum,
+        "main_finance": MainFinanceEnum,
+        "multidisc": MultidiscEnum,
+    }
+
+    query = select(Publication).options(
+        selectinload(Publication.actual_oecd_items),
+        selectinload(Publication.actual_grnti_items),
+        selectinload(Publication.main_sections),
+        selectinload(Publication.pub_information),
+        selectinload(Publication.index),
+        selectinload(Publication.actual_specialties)  # загрузка связанной таблицы
+    )
+
+    count_query = select(func.count()).select_from(Publication)
+
+    # --- фильтры ---
+    if "languages" in filters and filters["languages"]:
+        for lang in filters["languages"]:
+            query = query.where(Publication.language.like(f"%{lang.value}%"))
+            count_query = count_query.where(Publication.language.like(f"%{lang.value}%"))
+
+    for key, value in filters.items():
+        if key == "languages":
+            continue
+        if key == "name" and value:
+            query = query.where(Publication.name.ilike(f"%{value}%"))
+            count_query = count_query.where(Publication.name.ilike(f"%{value}%"))
+        elif key == "el_updated_at_from" and value:
+            query = query.where(Publication.el_updated_at >= value)
+            count_query = count_query.where(Publication.el_updated_at >= value)
+        elif key == "el_updated_at_to" and value:
+            query = query.where(Publication.el_updated_at <= value)
+            count_query = count_query.where(Publication.el_updated_at <= value)
+        elif key in enum_fields and value is not None:
+            try:
+                enum_value = enum_fields[key](value)
+            except ValueError:
+                continue
+            query = query.where(getattr(Publication, key) == enum_value)
+            count_query = count_query.where(getattr(Publication, key) == enum_value)
+        elif key == "actual_specialty" and value:
+            # value — список ID специальностей
+            query = query.where(
+                exists().where(
+                    (ActualSpecialty.pub_id == Publication.id) &
+                    (ActualSpecialty.specialty_id.in_(value))
+                )
+            )
+            count_query = count_query.where(
+                exists().where(
+                    (ActualSpecialty.pub_id == Publication.id) &
+                    (ActualSpecialty.specialty_id.in_(value))
+                )
+            )
+        elif hasattr(Publication, key) and value is not None:
+            query = query.where(getattr(Publication, key) == value)
+            count_query = count_query.where(getattr(Publication, key) == value)
+
+    offset = (page - 1) * per_page
+    query = query.offset(offset).limit(per_page)
+
+    result = await db.execute(query)
+    publications = result.unique().scalars().all()
+
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one()
+
+    publications_out = []
+    for pub in publications:
+        pub_dict = {
+            **pub.__dict__,
+            "actual_oecd_items": [ActualOECDResponse.model_validate(item.__dict__) for item in pub.actual_oecd_items],
+            "actual_grnti_items": [ActualGRNTIResponse.model_validate(item.__dict__) for item in pub.actual_grnti_items],
+            "main_sections": [MainSectionResponse.model_validate(item.__dict__) for item in pub.main_sections],
+            "pub_information": PubInformationResponse.model_validate(pub.pub_information.__dict__) if pub.pub_information else None,
+            "index": IndexResponse.model_validate(pub.index.__dict__) if pub.index else None,
+        }
+        publications_out.append(PublicationResponse.model_validate(pub_dict))
+
+    return publications_out, total
