@@ -3,7 +3,7 @@ from typing import Dict, Tuple, List
 
 from fastapi import HTTPException
 from pydantic import ValidationError
-from sqlalchemy import func, text, Enum, exists, or_, and_
+from sqlalchemy import func, text, Enum, exists, or_, and_, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload, selectinload
@@ -345,13 +345,17 @@ async def get_paginated_publications_with_index_and_information(
             except ValueError:
                 continue
         elif key == "actual_specialty":
-            if value:
-                query = query.join(Publication.actual_specialties).filter(
-                    ActualSpecialty.specialty_id.in_(value)
-                )
-                count_query = count_query.join(Publication.actual_specialties).filter(
-                    ActualSpecialty.specialty_id.in_(value)
-                ).distinct(Publication.id)  # <- важная поправка
+                if value:
+                    # основной запрос
+                    query = query.join(Publication.actual_specialties).filter(
+                        ActualSpecialty.specialty_id.in_(value)
+                    )
+
+                    # count-запрос с уникальными публикациями
+                    count_query = select(func.count(distinct(Publication.id))).select_from(Publication)
+                    count_query = count_query.join(Publication.actual_specialties).filter(
+                        ActualSpecialty.specialty_id.in_(value)
+                    )
         elif hasattr(Publication, key):
             query = query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
