@@ -323,9 +323,6 @@ async def get_paginated_publications_with_index_and_information(
     # --- подзапрос для count ---
     count_subquery = select(Publication.id).distinct()
 
-    # --- join-флаги, чтобы не дублировать join ---
-    join_actual_specialty = False
-
     # --- применение фильтров ---
     for key, value in filters.items():
         if not value:
@@ -356,31 +353,17 @@ async def get_paginated_publications_with_index_and_information(
             except ValueError:
                 continue
 
-
-        elif key == "actual_specialty":
-
-            if value:
-                # filter через exists(), чтобы не дублировать строки
-
-                base_query = base_query.where(
-
-                    Publication.actual_specialties.any(
-
-                        ActualSpecialty.specialty_id.in_(value)
-
-                    )
-
+        elif key == "actual_specialty" and value:
+            base_query = base_query.where(
+                Publication.actual_specialties.any(
+                    ActualSpecialty.specialty_id.in_(value)
                 )
-
-                count_subquery = count_subquery.where(
-
-                    Publication.actual_specialties.any(
-
-                        ActualSpecialty.specialty_id.in_(value)
-
-                    )
-
+            )
+            count_subquery = count_subquery.where(
+                Publication.actual_specialties.any(
+                    ActualSpecialty.specialty_id.in_(value)
                 )
+            )
 
         elif hasattr(Publication, key):
             base_query = base_query.where(getattr(Publication, key) == value)
@@ -388,12 +371,19 @@ async def get_paginated_publications_with_index_and_information(
 
     # --- выполнение count через подзапрос ---
     count_query = select(func.count()).select_from(count_subquery.subquery())
+
+    # --- лог запроса count ---
+    logger.info(f"Count query: {count_query}")
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
+    logger.info(f"Total publications found with filters {filters}: {total}")
 
     # --- пагинация ---
     offset = (page - 1) * per_page
     base_query = base_query.offset(offset).limit(per_page)
+
+    # --- лог запроса основного ---
+    logger.info(f"Base query (paginated): {base_query}")
 
     # --- выполнение основного запроса ---
     result = await db.execute(base_query)
