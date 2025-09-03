@@ -18,7 +18,7 @@ from app.schemas.index import IndexResponse
 from app.schemas.main_section import MainSectionBase, MainSectionResponse
 from app.schemas.pub_information import PubInformationResponse
 from app.schemas.publication import PublicationCreate, PublicationUpdate, PublicationOut, PublicationResponse, \
-    PublicationFilterWithSpec
+    PublicationFilterWithSpec, PublicationResponseWith
 from app.models.publication import (
     Publication,
     SerialTypeEnum11,
@@ -377,6 +377,6 @@ async def get_paginated_publications_with_index_and_information(
             "pub_information": PubInformationResponse.model_validate(pub.pub_information.__dict__) if pub.pub_information else None,
             "index": IndexResponse.model_validate(pub.index.__dict__) if pub.index else None,
         }
-        publications_out.append(PublicationFilterWith.model_validate(pub_dict))
+        publications_out.append(PublicationResponseWith.model_validate(pub_dict))
 
     return publications_out, total
