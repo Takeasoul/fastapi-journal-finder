@@ -384,7 +384,7 @@ async def get_paginated_publications_with_index_and_information(
             access=pub.access,
             main_finance=pub.main_finance,
             multidisc=pub.multidisc,
-            language=pub.language.split(",") if pub.language else [],
+            language=list(pub.language) if pub.language else [],
             el_updated_at=pub.el_updated_at,
             actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in pub.actual_oecd_items],
             actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in pub.actual_grnti_items],
