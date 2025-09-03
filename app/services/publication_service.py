@@ -95,8 +95,12 @@ async def get_paginated_publications(
     result = await db.execute(query)
     publications = result.unique().scalars().all()
 
+    # --- перед выполнением count ---
+    logger.info(f"Count query filters: {filters}")
+    count_query = select(func.count()).select_from(count_subquery.subquery())
     total_result = await db.execute(count_query)
     total = total_result.scalar_one()
+    logger.info(f"Total publications found with filters {filters}: {total}")
 
     publications_out = []
     for pub in publications:
