@@ -345,13 +345,12 @@ async def get_paginated_publications_with_index_and_information(
             except ValueError:
                 continue
         elif key == "actual_specialty":
-                if value:  # проверяем, что список не пустой
-                    # join к ActualSpecialty
+                if value:
                     query = query.join(Publication.actual_specialties).filter(
                         ActualSpecialty.specialty_id.in_(value)
                     )
 
-                    # для count_query считаем уникальные публикации
+                    # корректный count
                     count_subq = select(Publication.id).join(Publication.actual_specialties).filter(
                         ActualSpecialty.specialty_id.in_(value)
                     ).distinct()
