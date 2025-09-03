@@ -321,29 +321,44 @@ async def get_paginated_publications_with_index_and_information(
     # Запрос на количество
     count_query = select(func.count(distinct(Publication.id))).select_from(Publication)
 
+    # Применение фильтров к обоим запросам
     for key, value in filters.items():
         if not value:
             continue
+
         if key == "languages":
             lang_conditions = [Publication.language.like(f"%{lang.value}%") for lang in value]
+            base_query = base_query.where(or_(*lang_conditions))
             count_query = count_query.where(or_(*lang_conditions))
         elif key == "name":
+            base_query = base_query.where(Publication.name.ilike(f"%{value}%"))
             count_query = count_query.where(Publication.name.ilike(f"%{value}%"))
         elif key == "el_updated_at_from":
+            base_query = base_query.where(Publication.el_updated_at >= value)
             count_query = count_query.where(Publication.el_updated_at >= value)
         elif key == "el_updated_at_to":
+            base_query = base_query.where(Publication.el_updated_at <= value)
             count_query = count_query.where(Publication.el_updated_at <= value)
         elif key in enum_fields:
             try:
                 enum_value = enum_fields[key](value)
+                base_query = base_query.where(getattr(Publication, key) == enum_value)
                 count_query = count_query.where(getattr(Publication, key) == enum_value)
             except ValueError:
                 continue
         elif key == "actual_specialty":
-            count_query = count_query.outerjoin(Publication.actual_specialties).filter(
-                ActualSpecialty.specialty_id.in_(value)
+            # Преобразуем значение в список чисел
+            specialty_ids = [int(id) for id in value]
+
+            # Применяем INNER JOIN и фильтр к обоим запросам
+            base_query = base_query.join(Publication.actual_specialties).filter(
+                ActualSpecialty.specialty_id.in_(specialty_ids)
+            )
+            count_query = count_query.join(Publication.actual_specialties).filter(
+                ActualSpecialty.specialty_id.in_(specialty_ids)
             )
         elif hasattr(Publication, key):
+            base_query = base_query.where(getattr(Publication, key) == value)
             count_query = count_query.where(getattr(Publication, key) == value)
 
     # --- пагинация ---
@@ -362,6 +377,7 @@ async def get_paginated_publications_with_index_and_information(
     publications = result.unique().scalars().all()
     logger.info(f"Fetched {len(publications)} publications (page {page})")
 
+    # Преобразование результатов в формат ответа
     publications_out = []
     for pub in publications:
         logger.info(f"Processing publication ID={pub.id}, name={pub.name}")
