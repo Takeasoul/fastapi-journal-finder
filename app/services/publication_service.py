@@ -347,7 +347,6 @@ async def get_paginated_publications_with_index_and_information(
                 continue
 
         elif key == "actual_specialty":
-            # value — список ID специальностей
             subq = exists().where(
                 (ActualSpecialty.pub_id == Publication.id) &
                 (ActualSpecialty.specialty_id.in_(value))
@@ -368,31 +367,50 @@ async def get_paginated_publications_with_index_and_information(
     total = total_result.scalar_one()
 
     result = await db.execute(query)
-    publications = result.unique().scalars().all()  # unique() теперь безопасно с selectinload
+    publications = result.unique().scalars().all()
 
     # --- подготовка ответа ---
-    publications_out = [
-        PublicationResponseWith(
-            id=pub.id,
-            el_id=pub.el_id,
-            vak_id=pub.vak_id,
-            name=pub.name,
-            serial_type=pub.serial_type,
-            serial_elem=pub.serial_elem,
-            purpose=pub.purpose,
-            distribution=pub.distribution,
-            access=pub.access,
-            main_finance=pub.main_finance,
-            multidisc=pub.multidisc,
-            language=list(pub.language) if pub.language else [],
-            el_updated_at=pub.el_updated_at,
-            actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in pub.actual_oecd_items],
-            actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in pub.actual_grnti_items],
-            main_sections=[MainSectionResponse.model_validate(item, from_attributes=True) for item in pub.main_sections],
-            pub_information=PubInformationResponse.model_validate(pub.pub_information, from_attributes=True) if pub.pub_information else None,
-            index=IndexResponse.model_validate(pub.index, from_attributes=True) if pub.index else None
+    publications_out = []
+    for pub in publications:
+        # безопасная сериализация PubInformation
+        pub_information = None
+        if pub.pub_information:
+            pub_information_data = {
+                field: getattr(pub.pub_information, field)
+                for field in PubInformationResponse.__fields__.keys()
+            }
+            pub_information = PubInformationResponse(**pub_information_data)
+
+        # безопасная сериализация Index
+        index = None
+        if pub.index:
+            index_data = {
+                field: getattr(pub.index, field)
+                for field in IndexResponse.__fields__.keys()
+            }
+            index = IndexResponse(**index_data)
+
+        publications_out.append(
+            PublicationResponseWith(
+                id=pub.id,
+                el_id=pub.el_id,
+                vak_id=pub.vak_id,
+                name=pub.name,
+                serial_type=pub.serial_type,
+                serial_elem=pub.serial_elem,
+                purpose=pub.purpose,
+                distribution=pub.distribution,
+                access=pub.access,
+                main_finance=pub.main_finance,
+                multidisc=pub.multidisc,
+                language=list(pub.language) if pub.language else [],
+                el_updated_at=pub.el_updated_at,
+                actual_oecd_items=[ActualOECDResponse.model_validate(item, from_attributes=True) for item in pub.actual_oecd_items],
+                actual_grnti_items=[ActualGRNTIResponse.model_validate(item, from_attributes=True) for item in pub.actual_grnti_items],
+                main_sections=[MainSectionResponse.model_validate(item, from_attributes=True) for item in pub.main_sections],
+                pub_information=pub_information,
+                index=index
+            )
         )
-        for pub in publications
-    ]
 
     return publications_out, total
