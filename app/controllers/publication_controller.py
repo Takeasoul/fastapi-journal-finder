@@ -48,7 +48,7 @@ async def list_publications_paginated(
 
 @router.get(
     "/with_index_and_information",
-    response_model=PaginatedResponse,
+    response_model=PaginatedResponseWith,
     dependencies=[Depends(require_role("user"))],
     description="Получает список всех публикаций с поддержкой пагинации и фильтрации. - **page**: Номер страницы (начинается с 1). - **per_page**: Количество элементов на странице (максимум 100). - **filters**: Фильтры для поиска публикаций (например, язык, автор, дата). ВАЖНО: из-за бага Swagger параметр languages нужно передавать через query (?languages=русский&languages=английский), а не через body, даже если Swagger предлагает body."
 )
