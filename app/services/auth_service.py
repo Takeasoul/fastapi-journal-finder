@@ -44,7 +44,7 @@ class AuthService:
         confirmation_token = generate_confirmation_token()
 
         # Формирование ссылки для подтверждения
-        confirmation_link = f"http://localhost:5173/auth?mode=confirm&token={confirmation_token}"
+        confirmation_link = f"https://330657.simplecloud.ru/auth?mode=confirm&token={confirmation_token}"
 
         # Получение HTML-шаблона письма
         html_body = EmailTemplates.confirmation_email_template(confirmation_link)
@@ -190,7 +190,7 @@ class AuthService:
 
         # Генерация нового токена подтверждения
         confirmation_token = generate_confirmation_token()
-        confirmation_link = f"http://localhost:5173/auth?mode=confirm&token={confirmation_token}"
+        confirmation_link = f"https://330657.simplecloud.ru/auth?mode=confirm&token={confirmation_token}"
 
         # Получение HTML-шаблона письма
         html_body = EmailTemplates.confirmation_email_template(confirmation_link)

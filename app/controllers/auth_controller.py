@@ -171,7 +171,7 @@ async def request_password_reset(
     await db.commit()
 
     # Отправка письма с инструкциями
-    base_url = f"http://localhost:5173/auth?mode=reset-password"
+    base_url = f"https://330657.simplecloud.ru/auth?mode=reset-password"
     query_params = {"token": reset_token}
 
     reset_link = base_url + "&" + urlencode(query_params)
